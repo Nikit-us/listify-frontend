@@ -7,13 +7,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+// import { Label } from '@/components/ui/label'; // Label is part of FormLabel
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ImageUpload from '@/components/shared/ImageUpload';
 import { updateUserProfile, getCities } from '@/lib/mockApi';
-import type { UserUpdateProfileDto, UserProfileDto, CityDto } from '@/types/api';
+import type { UserUpdateProfileDto, UserProfileDto, CityDto, JwtResponseDto } from '@/types/api';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -21,7 +21,7 @@ import Image from 'next/image';
 
 const profileSchema = z.object({
   fullName: z.string().min(2, { message: 'Имя должно содержать не менее 2 символов.' }).optional(),
-  phoneNumber: z.string().regex(/^\+?[0-9]{10,15}$/, { message: 'Неверный формат номера телефона.' }).optional(),
+  phoneNumber: z.string().regex(/^\+?[0-9]{10,15}$/, { message: 'Неверный формат номера телефона.' }).optional().or(z.literal('')),
   cityId: z.string().optional(),
 });
 
@@ -36,7 +36,7 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File[]>([]);
   const [cities, setCities] = useState<CityDto[]>([]);
-  const { login: updateAuthContextUser, user, token } = useAuth(); // login also updates user in context, get token
+  const { login: updateAuthContextUser, user, token } = useAuth();
   const { toast } = useToast();
 
   const form = useForm<ProfileFormValues>({
@@ -44,11 +44,11 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
     defaultValues: {
       fullName: profile.fullName || '',
       phoneNumber: profile.phoneNumber || '',
-      cityId: profile.cityId?.toString() || '',
+      cityId: profile.cityId?.toString() || undefined, // Set to undefined if not present for placeholder
     },
   });
 
-  useEffect(()_ => {
+  useEffect(() => {
     getCities().then(setCities).catch(console.error);
   }, []);
 
@@ -57,7 +57,7 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
   };
 
   const onSubmit = async (data: ProfileFormValues) => {
-    if (!user || !token) { // Check for token
+    if (!user || !token) {
         toast({ variant: "destructive", title: "Ошибка", description: "Вы не авторизованы." });
         setIsLoading(false);
         return;
@@ -66,9 +66,19 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
     setFormError(null);
 
     const updateData: UserUpdateProfileDto = {};
+    // Only include fields if they have changed and are not empty (unless allowed by DTO)
     if (data.fullName && data.fullName !== profile.fullName) updateData.fullName = data.fullName;
     if (data.phoneNumber && data.phoneNumber !== profile.phoneNumber) updateData.phoneNumber = data.phoneNumber;
-    if (data.cityId && parseInt(data.cityId) !== profile.cityId) updateData.cityId = parseInt(data.cityId);
+    // Handle optional empty string for phone number if backend allows unsetting it
+    if (data.phoneNumber === '' && profile.phoneNumber) updateData.phoneNumber = ''; 
+    
+    if (data.cityId && parseInt(data.cityId) !== profile.cityId) {
+        updateData.cityId = parseInt(data.cityId);
+    } else if (!data.cityId && profile.cityId !== undefined) { // If cityId is cleared
+        // Depending on API, you might send null or not send the field
+        // For now, let's assume sending an explicit null or not sending the field handles unsetting
+        // updateData.cityId = null; // Or simply don't set it if API expects omission for no change
+    }
     
     if (Object.keys(updateData).length === 0 && avatarFile.length === 0) {
         toast({ title: "Нет изменений", description: "Вы не внесли никаких изменений." });
@@ -77,30 +87,20 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
     }
 
     try {
-      // Pass token to updateUserProfile
-      const updatedProfile = await updateUserProfile(user.id, updateData, avatarFile[0], token);
+      // updateUserProfile no longer takes userId as it uses /api/users/me
+      const updatedProfile = await updateUserProfile(updateData, avatarFile[0], token);
       
-      // Update AuthContext with the new profile data.
-      // The JWT token itself doesn't change, but user details within it might be stale.
-      // The login function in AuthContext fetches the profile again, ensuring context is fresh.
-      // We need the original JWT response structure, so we reconstruct it.
-      if (user.token) { 
-         await updateAuthContextUser({ 
-            token: user.token, // Use existing token from context if available (can be named differently in user object)
-            type: 'Bearer', 
-            userId: updatedProfile.id, 
-            email: updatedProfile.email, 
-            roles: user.roles || ['ROLE_USER'] // Assuming roles exist on user object in context
-        });
-      } else { // Fallback if user.token is not directly on user object
-        await updateAuthContextUser({
-            token: token, // Use token from useAuth()
-            type: 'Bearer',
-            userId: updatedProfile.id,
-            email: updatedProfile.email,
-            roles: profile.roles || ['ROLE_USER'] // Use roles from original profile or default
-        });
-      }
+      // Construct a mock JwtResponseDto to update the AuthContext
+      // The actual token doesn't change on profile update, but we need to refresh the user object in context.
+      const mockJwtResponse: JwtResponseDto = {
+        token: token,
+        type: 'Bearer',
+        userId: updatedProfile.id, // from the updated profile
+        email: updatedProfile.email, // from the updated profile
+        roles: user.roles || ['ROLE_USER'], // Persist existing roles, or default
+      };
+      await updateAuthContextUser(mockJwtResponse);
+
 
       toast({
         title: "Профиль обновлен!",
@@ -130,7 +130,7 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
             <div className="flex flex-col items-center space-y-4">
               <div className="relative">
                 <Image
-                  src={avatarFile[0] ? URL.createObjectURL(avatarFile[0]) : profile.avatarUrl || "https://placehold.co/128x128.png?text=Avatar"}
+                  src={avatarFile[0] ? URL.createObjectURL(avatarFile[0]) : profile.avatarUrl || "https://placehold.co/128x128.png"}
                   alt="Аватар"
                   width={128}
                   height={128}
@@ -179,13 +179,14 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Город</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ""} >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите ваш город" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="">Не выбран</SelectItem> 
                       {cities.map(city => (
                         <SelectItem key={city.id} value={city.id.toString()}>{city.name}</SelectItem>
                       ))}

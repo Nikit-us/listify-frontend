@@ -5,7 +5,13 @@ export interface Page<T> {
   totalElements: number;
   size: number;
   number: number; // current page number
-  // other pagination fields
+  // Spring Data Pageable also includes:
+  // pageable: object;
+  // last: boolean;
+  // first: boolean;
+  // numberOfElements: number;
+  // sort: object;
+  // empty: boolean;
 }
 
 export interface AdvertisementResponseDto {
@@ -27,8 +33,8 @@ export interface ImageDto {
 export interface AdvertisementDetailDto extends AdvertisementResponseDto {
   description: string;
   updatedAt: string; // ISO date string
-  status: "ACTIVE" | "INACTIVE" | "SOLD"; // Example statuses
-  condition: "NEW" | "USED_LIKE_NEW" | "USED_GOOD" | "USED_FAIR"; // Example conditions
+  status: "ACTIVE" | "INACTIVE" | "SOLD";
+  condition: "NEW" | "USED_LIKE_NEW" | "USED_GOOD" | "USED_FAIR";
   categoryId: number;
   categoryName: string;
   sellerId: number;
@@ -59,13 +65,13 @@ export interface UserRegistrationDto {
 
 export interface UserResponseDto {
   id: number;
-  email: string;
+  email:string;
   fullName: string;
   phoneNumber: string;
   registeredAt: string; // ISO date string
   avatarUrl?: string;
-  cityId?: number;
-  cityName?: string;
+  cityId?: number; // Included as per UserProfileDto which UserResponseDto seems to be a base for
+  cityName?: string; // Included as per UserProfileDto
 }
 
 export interface AdvertisementCreateDto {
@@ -77,10 +83,12 @@ export interface AdvertisementCreateDto {
   condition: "NEW" | "USED_LIKE_NEW" | "USED_GOOD" | "USED_FAIR";
 }
 
-export type AdvertisementUpdateDto = Partial<AdvertisementCreateDto>;
+export type AdvertisementUpdateDto = Partial<Omit<AdvertisementCreateDto, 'categoryId' | 'cityId'> & { status?: "ACTIVE" | "INACTIVE" | "SOLD", categoryId?: number, cityId?: number }>;
+
 
 export interface UserProfileDto extends UserResponseDto {
   totalActiveAdvertisements: number;
+  // roles might be here too depending on backend, but spec has it in JwtResponseDto
 }
 
 export interface UserUpdateProfileDto {
@@ -96,5 +104,28 @@ export interface CityDto {
 
 export interface CategoryDto {
   id: number;
+  name: string;
+  parentCategoryId?: number;
+}
+
+export interface AdvertisementSearchCriteriaDto {
+  keyword?: string;
+  categoryId?: number;
+  cityId?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  condition?: "NEW" | "USED_LIKE_NEW" | "USED_GOOD" | "USED_FAIR"; // Or other conditions from your spec
+  sellerId?: number; // API spec shows long, using number here
+  page?: number;
+  size?: number;
+  sort?: string; // e.g., "createdAt,desc"
+}
+
+export interface CategoryCreateDto {
+  name: string;
+  parentCategoryId?: number;
+}
+
+export interface CityCreateDto {
   name: string;
 }

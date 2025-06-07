@@ -4,11 +4,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import AdCard from '@/components/ads/AdCard';
-import AdFilters, { type Filters } from '@/components/ads/AdFilters';
+import AdFilters, { type Filters as AdFiltersType } from '@/components/ads/AdFilters';
 import PaginationControls from '@/components/shared/PaginationControls';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import type { AdvertisementResponseDto, Page } from '@/types/api';
-import { getAds } from '@/lib/mockApi';
+import type { AdvertisementResponseDto, Page, AdvertisementSearchCriteriaDto } from '@/types/api';
+import { searchAds } from '@/lib/mockApi'; // Changed from getAds to searchAds
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Info } from "lucide-react";
@@ -20,13 +20,13 @@ export default function HomePage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { token } = useAuth(); // Get token for API calls
+  const { token } = useAuth();
 
   const [adsPage, setAdsPage] = useState<Page<AdvertisementResponseDto> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [currentFilters, setCurrentFilters] = useState<Filters>(() => {
+  const [currentFilters, setCurrentFilters] = useState<AdFiltersType>(() => {
     const params = new URLSearchParams(searchParams.toString());
     return {
       keyword: params.get('keyword') || undefined,
@@ -34,46 +34,53 @@ export default function HomePage() {
       categoryId: params.get('categoryId') ? parseInt(params.get('categoryId')!) : undefined,
       minPrice: params.get('minPrice') ? parseFloat(params.get('minPrice')!) : undefined,
       maxPrice: params.get('maxPrice') ? parseFloat(params.get('maxPrice')!) : undefined,
+      // condition and sellerId are not in AdFiltersType yet, but API supports them
     };
   });
 
   const currentPage = parseInt(searchParams.get('page') || '0', 10);
 
-  const fetchAdvertisements = useCallback(async (page: number, filters: Filters, authToken?: string | null) => {
+  const fetchAdvertisements = useCallback(async (page: number, filters: AdFiltersType, authToken?: string | null) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getAds(page, ADS_PER_PAGE, filters, authToken);
+      const searchCriteria: AdvertisementSearchCriteriaDto = {
+        ...filters,
+        page,
+        size: ADS_PER_PAGE,
+        sort: 'createdAt,desc', // Default sort or make it configurable
+      };
+      const data = await searchAds(searchCriteria, authToken); // Use searchAds
       setAdsPage(data);
     } catch (err) {
-      setError('Не удалось загрузить объявления. Попробуйте позже.');
+      setError((err as Error).message || 'Не удалось загрузить объявления. Попробуйте позже.');
       console.error(err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [token]); // Added token to dependency array as it's used in searchAds
 
   useEffect(() => {
     fetchAdvertisements(currentPage, currentFilters, token);
   }, [currentPage, currentFilters, fetchAdvertisements, token]);
 
-  const handleFilterChange = (newFilters: Filters) => {
+  const handleFilterChange = (newFilters: AdFiltersType) => {
     setCurrentFilters(newFilters);
-    updateURL(0, newFilters); // Reset to first page on filter change
+    updateURL(0, newFilters); 
   };
 
   const handlePageChange = (newPage: number) => {
     updateURL(newPage, currentFilters);
   };
 
-  const updateURL = (page: number, filters: Filters) => {
+  const updateURL = (page: number, filters: AdFiltersType) => {
     const params = new URLSearchParams();
     if (page > 0) params.set('page', page.toString());
     if (filters.keyword) params.set('keyword', filters.keyword);
     if (filters.cityId) params.set('cityId', filters.cityId.toString());
     if (filters.categoryId) params.set('categoryId', filters.categoryId.toString());
-    if (filters.minPrice) params.set('minPrice', filters.minPrice.toString());
-    if (filters.maxPrice) params.set('maxPrice', filters.maxPrice.toString());
+    if (filters.minPrice !== undefined) params.set('minPrice', filters.minPrice.toString());
+    if (filters.maxPrice !== undefined) params.set('maxPrice', filters.maxPrice.toString());
     router.push(`${pathname}?${params.toString()}`);
   };
   
@@ -122,17 +129,17 @@ export default function HomePage() {
               <AdCard key={ad.id} ad={ad} />
             ))}
           </div>
-          <PaginationControls
-            currentPage={adsPage.number}
-            totalPages={adsPage.totalPages}
-            onPageChange={handlePageChange}
-            hasNextPage={adsPage.number < adsPage.totalPages - 1}
-            hasPrevPage={adsPage.number > 0}
-          />
+          {adsPage.totalPages > 1 && (
+            <PaginationControls
+              currentPage={adsPage.number}
+              totalPages={adsPage.totalPages}
+              onPageChange={handlePageChange}
+              hasNextPage={adsPage.number < adsPage.totalPages - 1}
+              hasPrevPage={adsPage.number > 0}
+            />
+          )}
         </>
       )}
     </div>
   );
 }
-
-    

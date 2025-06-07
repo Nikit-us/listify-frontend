@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { JwtResponseDto, UserProfileDto } from '@/types/api';
-import { getUserProfile } from '@/lib/mockApi';
+import { getCurrentUserProfile } from '@/lib/mockApi'; // Changed to getCurrentUserProfile
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -24,47 +24,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const fetchUserProfile = useCallback(async (userId: number, authToken: string) => {
+  const fetchProfile = useCallback(async (authToken: string) => { // Renamed for clarity
     try {
-      // In a real app, you'd pass the token to getUserProfile or it would be handled by an interceptor
-      const profile = await getUserProfile(userId);
+      const profile = await getCurrentUserProfile(authToken); // Use getCurrentUserProfile
       setUser(profile);
+      if (!profile) { // If profile is null (e.g. token invalid, user deleted)
+        setToken(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('authUserMeta'); // Keep this for consistency if needed elsewhere, though API spec implies JWT is king
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
-      // Potentially logout if profile fetch fails due to auth error
       setToken(null);
       setUser(null);
       if (typeof window !== 'undefined') {
         localStorage.removeItem('authToken');
-        localStorage.removeItem('authUser');
+        localStorage.removeItem('authUserMeta');
       }
     }
   }, []);
 
   useEffect(() => {
     const storedToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-    const storedUserMeta = typeof window !== 'undefined' ? localStorage.getItem('authUserMeta') : null;
+    // const storedUserMeta = typeof window !== 'undefined' ? localStorage.getItem('authUserMeta') : null; // User meta might be stale, prefer fetching profile with token
     
-    if (storedToken && storedUserMeta) {
-      const parsedUserMeta: { userId: number; email: string } = JSON.parse(storedUserMeta);
+    if (storedToken) {
       setToken(storedToken);
-      // Fetch full profile using stored user ID
-      fetchUserProfile(parsedUserMeta.userId, storedToken).finally(() => setIsLoading(false));
+      fetchProfile(storedToken).finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
     }
-  }, [fetchUserProfile]);
+  }, [fetchProfile]);
 
   const login = async (authResponse: JwtResponseDto) => {
     setIsLoading(true);
     setToken(authResponse.token);
-    const userMeta = { userId: authResponse.userId, email: authResponse.email };
-    
+    // Store only token. User meta (userId, email) is in token and profile will be fetched.
     if (typeof window !== 'undefined') {
       localStorage.setItem('authToken', authResponse.token);
-      localStorage.setItem('authUserMeta', JSON.stringify(userMeta));
+      // localStorage.setItem('authUserMeta', JSON.stringify({ userId: authResponse.userId, email: authResponse.email })); // Optionally store for quick access but fetchProfile is source of truth
     }
-    await fetchUserProfile(authResponse.userId, authResponse.token);
+    await fetchProfile(authResponse.token);
     setIsLoading(false);
   };
 
@@ -74,9 +76,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('authToken');
       localStorage.removeItem('authUserMeta');
-      localStorage.removeItem('authUser'); // old key, ensure removal
     }
-    router.push('/login');
+    router.push('/login'); // Redirect to login page
   }, [router]);
 
   return (
