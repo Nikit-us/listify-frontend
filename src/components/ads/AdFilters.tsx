@@ -55,8 +55,8 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
     e?.preventDefault();
     onFilterChange({
       keyword: keyword || undefined,
-      cityId: cityId ? parseInt(cityId) : undefined,
-      categoryId: categoryId ? parseInt(categoryId) : undefined,
+      cityId: cityId && cityId !== ALL_ITEMS_SENTINEL_VALUE ? parseInt(cityId) : undefined,
+      categoryId: categoryId && categoryId !== ALL_ITEMS_SENTINEL_VALUE ? parseInt(categoryId) : undefined,
       minPrice: minPrice ? parseFloat(minPrice) : undefined,
       maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
     });
@@ -72,7 +72,7 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
   };
 
   return (
-    <Card className="mb-8 shadow-sm sticky top-[calc(3.5rem+1px)] z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <Card className="mb-8 shadow-sm z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <CardHeader className="pb-4 pt-4">
         <CardTitle className="text-xl flex items-center">
           <Filter className="mr-2 h-5 w-5" /> Фильтры
