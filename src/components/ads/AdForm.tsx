@@ -53,7 +53,7 @@ export default function AdForm({ adId }: AdFormProps) {
   const [cities, setCities] = useState<CityDto[]>([]);
   
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, token } = useAuth();
   const { toast } = useToast();
 
   const form = useForm<AdFormValues>({
@@ -70,7 +70,7 @@ export default function AdForm({ adId }: AdFormProps) {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.replace('/login?redirect=/ads/new'); // Or current page if adId
+      router.replace(adId ? `/login?redirect=/ads/${adId}/edit` : '/login?redirect=/ads/new');
     }
   }, [authLoading, isAuthenticated, router, adId]);
 
@@ -95,7 +95,9 @@ export default function AdForm({ adId }: AdFormProps) {
       setIsLoading(true);
       getAdById(adId).then(adData => {
         if (adData) {
-          if(adData.sellerId !== user?.id && user) { // Check if user is available
+          // Проверка владельца объявления (важно для реального API, где токен определяет пользователя)
+          // В моковом API sellerId используется, в реальном API это может проверяться на бэкенде по токену
+          if(user && adData.sellerId !== user.id) { 
              toast({ variant: "destructive", title: "Ошибка доступа", description: "Вы не можете редактировать это объявление." });
              router.push(`/ads/${adId}`);
              return;
@@ -125,19 +127,18 @@ export default function AdForm({ adId }: AdFormProps) {
   };
   
   const handleRemoveExistingImage = (id: string | number) => {
-    // This is handled by ImageUpload, but we could add logic here if needed, e.g., mark for deletion on server
     setExistingImages(current => current.filter(img => img.id !== id));
   };
 
   const onSubmit = async (data: AdFormValues) => {
-    if (!user) {
-      toast({ variant: "destructive", title: "Ошибка", description: "Пожалуйста, войдите в систему для создания объявления." });
+    if (!user || !token) { // Проверяем наличие токена
+      toast({ variant: "destructive", title: "Ошибка", description: "Пожалуйста, войдите в систему." });
       return;
     }
     setIsLoading(true);
     setFormError(null);
     
-    const adData = {
+    const adPayload = { // Renamed to avoid confusion with 'data' from RHF
       ...data,
       price: Number(data.price),
       categoryId: parseInt(data.categoryId),
@@ -147,10 +148,12 @@ export default function AdForm({ adId }: AdFormProps) {
     try {
       let savedAd: AdvertisementDetailDto;
       if (adId) {
-        savedAd = await updateAd(adId, adData as AdvertisementUpdateDto, images.length > 0 ? images : undefined);
+        // Передаем token в updateAd
+        savedAd = await updateAd(adId, adPayload as AdvertisementUpdateDto, images.length > 0 ? images : undefined, token);
         toast({ title: "Успех!", description: "Объявление успешно обновлено." });
       } else {
-        savedAd = await createAd(adData as AdvertisementCreateDto, images, user.id);
+        // Передаем token в createAd. user.id из createAd убран, т.к. бэк должен брать его из токена
+        savedAd = await createAd(adPayload as AdvertisementCreateDto, images, token);
         toast({ title: "Успех!", description: "Объявление успешно создано." });
       }
       router.push(`/ads/${savedAd.id}`);
@@ -162,7 +165,7 @@ export default function AdForm({ adId }: AdFormProps) {
     }
   };
   
-  if (authLoading || (isLoading && !adId)) { // Show loading spinner if auth is loading or initial data for new form is loading
+  if (authLoading || (isLoading && !adId)) { 
     return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><LoadingSpinner size={48} /></div>;
   }
 
@@ -308,4 +311,3 @@ export default function AdForm({ adId }: AdFormProps) {
     </Card>
   );
 }
-

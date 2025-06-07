@@ -44,7 +44,7 @@ export default function AdDetailPage() {
   const [ad, setAd] = useState<AdvertisementDetailDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, token } = useAuth(); // Получаем токен
 
   useEffect(() => {
     if (isNaN(id)) {
@@ -75,9 +75,17 @@ export default function AdDetailPage() {
   }, [id]);
 
   const handleDeleteAd = async () => {
-    if (!ad || !user) return;
+    if (!ad || !user || !token) { // Проверяем наличие токена
+        toast({
+            variant: "destructive",
+            title: "Ошибка",
+            description: "Вы не авторизованы или сессия истекла.",
+        });
+        return;
+    }
     try {
-      await apiDeleteAd(ad.id, user.id);
+      // Передаем токен в apiDeleteAd. userId из deleteAd убран, т.к. бэк должен брать его из токена
+      await apiDeleteAd(ad.id, token);
       toast({
         title: "Успех!",
         description: "Объявление было успешно удалено.",

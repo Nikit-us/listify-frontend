@@ -36,7 +36,7 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File[]>([]);
   const [cities, setCities] = useState<CityDto[]>([]);
-  const { login: updateAuthContextUser, user } = useAuth(); // login also updates user in context
+  const { login: updateAuthContextUser, user, token } = useAuth(); // login also updates user in context, get token
   const { toast } = useToast();
 
   const form = useForm<ProfileFormValues>({
@@ -57,7 +57,11 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
   };
 
   const onSubmit = async (data: ProfileFormValues) => {
-    if (!user) return;
+    if (!user || !token) { // Check for token
+        toast({ variant: "destructive", title: "Ошибка", description: "Вы не авторизованы." });
+        setIsLoading(false);
+        return;
+    }
     setIsLoading(true);
     setFormError(null);
 
@@ -73,18 +77,31 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
     }
 
     try {
-      const updatedProfile = await updateUserProfile(user.id, updateData, avatarFile[0]);
-      // Update AuthContext by "re-logging in" with the new profile data (mocked)
-      // This is a simplified way to update context; a real app might have a dedicated updateUserInContext function
-      if (user.token) { // Use existing token
+      // Pass token to updateUserProfile
+      const updatedProfile = await updateUserProfile(user.id, updateData, avatarFile[0], token);
+      
+      // Update AuthContext with the new profile data.
+      // The JWT token itself doesn't change, but user details within it might be stale.
+      // The login function in AuthContext fetches the profile again, ensuring context is fresh.
+      // We need the original JWT response structure, so we reconstruct it.
+      if (user.token) { 
          await updateAuthContextUser({ 
-            token: user.token, 
+            token: user.token, // Use existing token from context if available (can be named differently in user object)
             type: 'Bearer', 
             userId: updatedProfile.id, 
             email: updatedProfile.email, 
-            roles: user.roles || ['ROLE_USER'] 
+            roles: user.roles || ['ROLE_USER'] // Assuming roles exist on user object in context
+        });
+      } else { // Fallback if user.token is not directly on user object
+        await updateAuthContextUser({
+            token: token, // Use token from useAuth()
+            type: 'Bearer',
+            userId: updatedProfile.id,
+            email: updatedProfile.email,
+            roles: profile.roles || ['ROLE_USER'] // Use roles from original profile or default
         });
       }
+
       toast({
         title: "Профиль обновлен!",
         description: "Ваши данные были успешно сохранены.",
