@@ -23,6 +23,8 @@ interface AdFiltersProps {
   initialFilters?: Filters;
 }
 
+const ALL_ITEMS_SENTINEL_VALUE = "ALL_ITEMS_VALUE";
+
 export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFiltersProps) {
   const [keyword, setKeyword] = useState(initialFilters.keyword || '');
   const [cityId, setCityId] = useState<string | undefined>(initialFilters.cityId?.toString());
@@ -89,12 +91,15 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
           </div>
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-foreground mb-1">Категория</label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
+            <Select 
+              value={categoryId === undefined ? ALL_ITEMS_SENTINEL_VALUE : categoryId} 
+              onValueChange={(value) => setCategoryId(value === ALL_ITEMS_SENTINEL_VALUE ? undefined : value)}
+            >
               <SelectTrigger id="category">
                 <SelectValue placeholder="Все категории" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Все категории</SelectItem>
+                <SelectItem value={ALL_ITEMS_SENTINEL_VALUE}>Все категории</SelectItem>
                 {categories.map(cat => (
                   <SelectItem key={cat.id} value={cat.id.toString()}>{cat.name}</SelectItem>
                 ))}
@@ -103,12 +108,15 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
           </div>
           <div>
             <label htmlFor="city" className="block text-sm font-medium text-foreground mb-1">Город</label>
-            <Select value={cityId} onValueChange={setCityId}>
+            <Select 
+              value={cityId === undefined ? ALL_ITEMS_SENTINEL_VALUE : cityId} 
+              onValueChange={(value) => setCityId(value === ALL_ITEMS_SENTINEL_VALUE ? undefined : value)}
+            >
               <SelectTrigger id="city">
                 <SelectValue placeholder="Все города" />
               </SelectTrigger>
               <SelectContent>
-                 <SelectItem value="">Все города</SelectItem>
+                 <SelectItem value={ALL_ITEMS_SENTINEL_VALUE}>Все города</SelectItem>
                 {cities.map(city => (
                   <SelectItem key={city.id} value={city.id.toString()}>{city.name}</SelectItem>
                 ))}
