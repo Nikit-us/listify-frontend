@@ -12,6 +12,7 @@ import { getAds } from '@/lib/mockApi';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Info } from "lucide-react";
+import { useAuth } from '@/context/AuthContext';
 
 const ADS_PER_PAGE = 12;
 
@@ -19,6 +20,7 @@ export default function HomePage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { token } = useAuth(); // Get token for API calls
 
   const [adsPage, setAdsPage] = useState<Page<AdvertisementResponseDto> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,11 +39,11 @@ export default function HomePage() {
 
   const currentPage = parseInt(searchParams.get('page') || '0', 10);
 
-  const fetchAdvertisements = useCallback(async (page: number, filters: Filters) => {
+  const fetchAdvertisements = useCallback(async (page: number, filters: Filters, authToken?: string | null) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getAds(page, ADS_PER_PAGE, filters);
+      const data = await getAds(page, ADS_PER_PAGE, filters, authToken);
       setAdsPage(data);
     } catch (err) {
       setError('Не удалось загрузить объявления. Попробуйте позже.');
@@ -52,8 +54,8 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    fetchAdvertisements(currentPage, currentFilters);
-  }, [currentPage, currentFilters, fetchAdvertisements]);
+    fetchAdvertisements(currentPage, currentFilters, token);
+  }, [currentPage, currentFilters, fetchAdvertisements, token]);
 
   const handleFilterChange = (newFilters: Filters) => {
     setCurrentFilters(newFilters);
@@ -132,3 +134,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 import type {
   Page,
   AdvertisementResponseDto,
@@ -52,6 +53,7 @@ let mockUsers: UserProfileDto[] = [
     registeredAt: '2025-01-15T14:30:00.000Z',
     totalActiveAdvertisements: mockAds.filter(ad => ad.sellerId === 12 && ad.status === 'ACTIVE').length,
     avatarUrl: 'https://placehold.co/100x100.png?text=IP',
+    roles: ['ROLE_USER'],
   },
   {
     id: 13,
@@ -63,6 +65,7 @@ let mockUsers: UserProfileDto[] = [
     registeredAt: '2024-11-10T10:20:00.000Z',
     totalActiveAdvertisements: mockAds.filter(ad => ad.sellerId === 13 && ad.status === 'ACTIVE').length,
     avatarUrl: 'https://placehold.co/100x100.png?text=AI',
+    roles: ['ROLE_USER'],
   },
 ];
 
@@ -99,11 +102,12 @@ const toAdvertisementResponseDto = (ad: AdvertisementDetailDto): AdvertisementRe
 export const getAds = async (
   page: number = 0,
   size: number = 10,
-  filters?: { keyword?: string; cityId?: number; minPrice?: number; maxPrice?: number, categoryId?: number }
+  filters?: { keyword?: string; cityId?: number; minPrice?: number; maxPrice?: number, categoryId?: number },
+  token?: string | null
 ): Promise<Page<AdvertisementResponseDto>> => {
-  if (!API_BASE_URL) { // Fallback to mock if API_BASE_URL is not set
+  if (!API_BASE_URL) { 
     console.warn("API_BASE_URL not set, using mock data for getAds");
-    await new Promise(resolve => setTimeout(resolve, 100)); // MOCK_DELAY
+    await new Promise(resolve => setTimeout(resolve, 100)); 
     let filteredAds = [...mockAds].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     if (filters) {
       if (filters.keyword) filteredAds = filteredAds.filter(ad => ad.title.toLowerCase().includes(filters.keyword!.toLowerCase()) || ad.description.toLowerCase().includes(filters.keyword!.toLowerCase()));
@@ -128,8 +132,15 @@ export const getAds = async (
   if (filters?.maxPrice) queryParams.append('maxPrice', filters.maxPrice.toString());
   if (filters?.categoryId) queryParams.append('categoryId', filters.categoryId.toString());
   
-  const response = await fetch(`${API_BASE_URL}/advertisements?${queryParams.toString()}`);
+  const headers: HeadersInit = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/advertisements?${queryParams.toString()}`, { headers });
   if (!response.ok) {
+    const errorText = await response.text().catch(() => `Could not read error response text from ${response.url}`);
+    console.error(`Failed to fetch ads. Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
     throw new Error('Failed to fetch ads');
   }
   return response.json();
@@ -145,6 +156,8 @@ export const getAdById = async (id: number): Promise<AdvertisementDetailDto | nu
   const response = await fetch(`${API_BASE_URL}/advertisements/${id}`);
   if (!response.ok) {
     if (response.status === 404) return null;
+    const errorText = await response.text().catch(() => `Could not read error response text from ${response.url}`);
+    console.error(`Failed to fetch ad ${id}. Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
     throw new Error(`Failed to fetch ad ${id}`);
   }
   return response.json();
@@ -155,19 +168,20 @@ export const login = async (credentials: LoginRequestDto): Promise<JwtResponseDt
     console.warn("API_BASE_URL not set, using mock data for login");
     await new Promise(resolve => setTimeout(resolve, 100));
     const user = mockUsers.find(u => u.email === credentials.email);
-    if (user && credentials.password === 'password123') {
-      return { token: `mock-jwt-token-for-${user.email}`, type: 'Bearer', userId: user.id, email: user.email, roles: ['ROLE_USER'] };
+    if (user && credentials.password === 'password123') { // Ensure mockUsers have roles
+      return { token: `mock-jwt-token-for-${user.email}`, type: 'Bearer', userId: user.id, email: user.email, roles: user.roles || ['ROLE_USER'] };
     }
     throw new Error('Invalid credentials (mock)');
   }
 
-  const response = await fetch(`${API_BASE_URL}/auth/login`, { // Предполагаемый эндпоинт
+  const response = await fetch(`${API_BASE_URL}/auth/login`, { 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(credentials),
   });
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
+    console.error(`Login failed. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
     throw new Error(errorData.message || 'Login failed');
   }
   return response.json();
@@ -184,25 +198,27 @@ export const register = async (data: UserRegistrationDto, avatar?: File): Promis
       cityName: mockCities.find(c=>c.id === data.cityId)?.name || "Unknown City", registeredAt: new Date().toISOString(),
       avatarUrl: avatar ? `https://placehold.co/100x100.png?text=${data.fullName.substring(0,2).toUpperCase()}` : undefined,
       totalActiveAdvertisements: 0,
+      roles: ['ROLE_USER'],
     };
     mockUsers.push(newUser);
-    const { totalActiveAdvertisements, ...userResponse } = newUser;
-    return userResponse;
+    const { totalActiveAdvertisements, roles, ...userResponse } = newUser; // Exclude roles from UserResponseDto if not part of it
+    return userResponse as UserResponseDto; // Cast if UserResponseDto doesn't include roles
   }
 
   const formData = new FormData();
-  formData.append('userDto', JSON.stringify(data)); // Отправляем данные DTO как строку JSON
+  formData.append('userDto', new Blob([JSON.stringify(data)], { type: "application/json" }));
   if (avatar) {
     formData.append('avatar', avatar);
   }
 
-  const response = await fetch(`${API_BASE_URL}/auth/register`, { // Предполагаемый эндпоинт
+  const response = await fetch(`${API_BASE_URL}/auth/register`, { 
     method: 'POST',
-    body: formData, // FormData устанавливает Content-Type автоматически
+    body: formData, 
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: 'Registration failed' }));
+    console.error(`Registration failed. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
     throw new Error(errorData.message || 'Registration failed');
   }
   return response.json();
@@ -212,9 +228,7 @@ export const createAd = async (data: AdvertisementCreateDto, images: File[] | un
    if (!API_BASE_URL) {
     console.warn("API_BASE_URL not set, using mock data for createAd");
     await new Promise(resolve => setTimeout(resolve, 100));
-    // Mock logic needs userId, but real API gets it from token. For mock, we'd need to find user by token (too complex for here)
-    // or assume a default user if token is a mock token.
-    const mockSeller = mockUsers[0]; // Simplified: assume first user for mock if token is present
+    const mockSeller = mockUsers[0]; 
     const newAdId = Math.max(...mockAds.map(ad => ad.id), 0) + 1;
     const newAd: AdvertisementDetailDto = {
       id: newAdId, ...data, cityName: mockCities.find(c => c.id === data.cityId)?.name || 'Unknown City',
@@ -229,7 +243,8 @@ export const createAd = async (data: AdvertisementCreateDto, images: File[] | un
   }
   
   const formData = new FormData();
-  formData.append('adDto', JSON.stringify(data));
+  formData.append('adDto', new Blob([JSON.stringify(data)], { type: "application/json" }));
+
   if (images) {
     images.forEach(file => formData.append('images', file));
   }
@@ -247,6 +262,7 @@ export const createAd = async (data: AdvertisementCreateDto, images: File[] | un
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: 'Failed to create ad' }));
+    console.error(`Failed to create ad. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
     throw new Error(errorData.message || 'Failed to create ad');
   }
   return response.json();
@@ -270,7 +286,7 @@ export const updateAd = async (id: number, data: AdvertisementUpdateDto, images:
   }
 
   const formData = new FormData();
-  formData.append('adDto', JSON.stringify(data));
+  formData.append('adDto', new Blob([JSON.stringify(data)], { type: "application/json" }));
   if (images && images.length > 0) {
     images.forEach(file => formData.append('images', file));
   }
@@ -288,6 +304,7 @@ export const updateAd = async (id: number, data: AdvertisementUpdateDto, images:
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: 'Failed to update ad' }));
+    console.error(`Failed to update ad. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
     throw new Error(errorData.message || 'Failed to update ad');
   }
   return response.json();
@@ -302,16 +319,19 @@ export const getUserProfile = async (userId: number, token?: string): Promise<Us
     return user || null;
   }
   
-  // Эндпоинт может быть /users/me для своего профиля или /users/{userId} для чужого
-  // Если это /users/me, то userId может быть не нужен в URL, а браться из токена на бэке
   const headers: HeadersInit = {};
-  if (token) { // Токен может быть нужен для доступа к профилю
+  if (token) { 
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}/users/${userId}/profile`, { headers }); // Пример эндпоинта
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/profile`, { headers }); 
   if (!response.ok) {
-    if (response.status === 404) return null;
+    if (response.status === 404) {
+      console.warn(`User profile for userId ${userId} not found (404) at ${response.url}. Check if the user exists or if the API endpoint is correct.`);
+      return null;
+    }
+    const errorText = await response.text().catch(() => `Could not read error response text from ${response.url}`);
+    console.error(`Failed to fetch user profile ${userId}. Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
     throw new Error(`Failed to fetch user profile ${userId}`);
   }
   return response.json();
@@ -332,7 +352,7 @@ export const updateUserProfile = async (userId: number, data: UserUpdateProfileD
   }
 
   const formData = new FormData();
-  formData.append('profileDto', JSON.stringify(data));
+  formData.append('profileDto', new Blob([JSON.stringify(data)], { type: "application/json" }) );
   if (avatar) {
     formData.append('avatar', avatar);
   }
@@ -341,8 +361,8 @@ export const updateUserProfile = async (userId: number, data: UserUpdateProfileD
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  // Обычно юзер обновляет свой профиль, API может быть /users/me/profile
-  const response = await fetch(`${API_BASE_URL}/users/${userId}/profile`, { // или /users/me/profile
+  
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/profile`, { 
     method: 'PUT',
     body: formData,
     headers,
@@ -350,6 +370,7 @@ export const updateUserProfile = async (userId: number, data: UserUpdateProfileD
 
   if (!response.ok) {
      const errorData = await response.json().catch(() => ({ message: 'Failed to update profile' }));
+    console.error(`Failed to update profile. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
     throw new Error(errorData.message || 'Failed to update profile');
   }
   return response.json();
@@ -362,7 +383,11 @@ export const getCities = async (): Promise<CityDto[]> => {
     return mockCities;
   }
   const response = await fetch(`${API_BASE_URL}/cities`);
-  if (!response.ok) throw new Error('Failed to fetch cities');
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => `Could not read error response text from ${response.url}`);
+    console.error(`Failed to fetch cities. Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
+    throw new Error('Failed to fetch cities');
+  }
   return response.json();
 };
 
@@ -373,7 +398,11 @@ export const getCategories = async (): Promise<CategoryDto[]> => {
     return mockCategories;
   }
   const response = await fetch(`${API_BASE_URL}/categories`);
-  if (!response.ok) throw new Error('Failed to fetch categories');
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => `Could not read error response text from ${response.url}`);
+    console.error(`Failed to fetch categories. Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
+    throw new Error('Failed to fetch categories');
+  }
   return response.json();
 };
 
@@ -381,7 +410,6 @@ export const deleteAd = async (adId: number, token: string): Promise<void> => {
   if (!API_BASE_URL) {
     console.warn("API_BASE_URL not set, using mock data for deleteAd");
     await new Promise(resolve => setTimeout(resolve, 100));
-    // Mock logic needs userId from token for proper auth, simplified here
     const adIndex = mockAds.findIndex(ad => ad.id === adId);
     if (adIndex === -1) throw new Error('Ad not found or user not authorized to delete (mock)');
     const sellerId = mockAds[adIndex].sellerId;
@@ -403,7 +431,12 @@ export const deleteAd = async (adId: number, token: string): Promise<void> => {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: 'Failed to delete ad' }));
+    console.error(`Failed to delete ad. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
     throw new Error(errorData.message || 'Failed to delete ad');
   }
-  // No content expected on successful delete typically
 };
+
+// Ensure mock users have roles for consistent mock login responses
+mockUsers = mockUsers.map(u => ({ ...u, roles: u.roles || ['ROLE_USER'] }));
+
+    
