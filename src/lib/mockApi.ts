@@ -17,31 +17,53 @@ import type {
   AdvertisementImageDto,
 } from '@/types/api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL_FROM_ENV = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-// Helper to get the base URL for assets, removing /api if present
-const getAssetBaseUrl = (): string => {
-  if (!API_BASE_URL) return '';
-  return API_BASE_URL.replace(/\/api$/, '');
+const isValidApiBaseUrl = (url?: string): boolean => {
+  if (!url || url.trim() === "" || url.toLowerCase() === "undefined") {
+    return false;
+  }
+  try {
+    new URL(url);
+    return true;
+  } catch (e) {
+    return false;
+  }
 };
 
-// Helper to convert relative image URLs to absolute ones
+const API_BASE_URL = isValidApiBaseUrl(API_BASE_URL_FROM_ENV) ? API_BASE_URL_FROM_ENV : undefined;
+
+
+const getAssetBaseUrl = (): string => {
+  if (!API_BASE_URL) return '';
+  try {
+    const url = new URL(API_BASE_URL);
+    let basePath = url.origin;
+    if (url.pathname.endsWith('/api')) {
+        basePath += url.pathname.substring(0, url.pathname.length - '/api'.length);
+    } else {
+        basePath += url.pathname;
+    }
+    return basePath.replace(/\/$/, '');
+
+  } catch (error) {
+    return API_BASE_URL_FROM_ENV && API_BASE_URL_FROM_ENV.startsWith('/') ? API_BASE_URL_FROM_ENV.replace(/\/api$/, '').replace(/\/$/, '') : '';
+  }
+};
+
 const toAbsoluteImageUrl = (relativePath?: string): string | undefined => {
   if (!relativePath) return undefined;
   if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
-    return relativePath; // Already absolute
+    return relativePath;
   }
   const assetBase = getAssetBaseUrl();
   if (assetBase && relativePath.startsWith('/')) {
     return `${assetBase}${relativePath}`;
   }
-  // If API_BASE_URL is not set, or path is not relative starting with /, return as is.
-  // This might mean some mock images won't load if API_BASE_URL isn't set and they are relative.
   return relativePath;
 };
 
 
-// Mock Data Storage
 let mockAds: AdvertisementDetailDto[] = Array.from({ length: 25 }, (_, i) => ({
   id: 101 + i,
   title: `Продам ${i % 2 === 0 ? 'ноутбук' : 'велосипед'} #${101 + i}`,
@@ -49,20 +71,20 @@ let mockAds: AdvertisementDetailDto[] = Array.from({ length: 25 }, (_, i) => ({
   cityId: (i % 3) + 1,
   cityName: ['Минск', 'Гомель', 'Брест'][i % 3],
   createdAt: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
-  previewImageUrl: `https://placehold.co/300x200.png?text=Ad+${101 + i}`, // Placeholder, absolute
+  previewImageUrl: `https://placehold.co/300x200.png?text=Ad+${101 + i}`,
   description: `Отличный товар #${101 + i}, почти новый. Использовался очень бережно, продаю в связи с переездом. Много текста чтобы описание было длинным и занимало несколько строк.`,
   updatedAt: new Date().toISOString(),
   status: 'ACTIVE',
   condition: i % 2 === 0 ? 'USED_GOOD' : 'NEW',
   categoryId: (i % 5) + 1,
-  categoryName: ['Ноутбуки', 'Велосипеды', 'Телефоны', 'Мебель', 'Книги'][i % 5],
+  categoryName: ['Электроника', 'Велосипеды', 'Телефоны', 'Мебель', 'Книги'][i % 5],
   sellerId: 12 + (i % 2),
   sellerName: i % 2 === 0 ? 'Иван Петров' : 'Анна Иванова',
   images: [
     { id: 201 + i * 3, imageUrl: `https://placehold.co/600x400.png?text=Image+1+Ad+${101+i}`, isPreview: true },
     { id: 202 + i * 3, imageUrl: `https://placehold.co/600x400.png?text=Image+2+Ad+${101+i}`, isPreview: false },
     { id: 203 + i * 3, imageUrl: `https://placehold.co/600x400.png?text=Image+3+Ad+${101+i}`, isPreview: false },
-  ].map(img => ({...img, imageUrl: img.imageUrl!})), // Ensure imageUrl is string for map
+  ].map(img => ({...img, imageUrl: img.imageUrl!})),
 }));
 
 let mockUsers: UserProfileDto[] = [
@@ -75,7 +97,7 @@ let mockUsers: UserProfileDto[] = [
     phoneNumber: '375291234567',
     registeredAt: '2025-01-15T14:30:00.000Z',
     totalActiveAdvertisements: mockAds.filter(ad => ad.sellerId === 12 && ad.status === 'ACTIVE').length,
-    avatarUrl: 'https://placehold.co/100x100.png?text=IP', // Placeholder, absolute
+    avatarUrl: 'https://placehold.co/100x100.png?text=IP',
   },
   {
     id: 13,
@@ -86,7 +108,7 @@ let mockUsers: UserProfileDto[] = [
     phoneNumber: '375337654321',
     registeredAt: '2024-11-10T10:20:00.000Z',
     totalActiveAdvertisements: mockAds.filter(ad => ad.sellerId === 13 && ad.status === 'ACTIVE').length,
-    avatarUrl: 'https://placehold.co/100x100.png?text=AI', // Placeholder, absolute
+    avatarUrl: 'https://placehold.co/100x100.png?text=AI',
   },
 ];
 
@@ -118,7 +140,7 @@ export const getAds = async (
   token?: string | null
 ): Promise<Page<AdvertisementResponseDto>> => {
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for getAds (simple list)");
+    console.warn("API_BASE_URL not set or invalid, using mock data for getAds (simple list)");
     await new Promise(resolve => setTimeout(resolve, 100));
     let sortedAds = [...mockAds];
     if (sort === 'createdAt,desc') {
@@ -136,16 +158,22 @@ export const getAds = async (
     sort: sort,
   });
   const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
-  const response = await fetch(`${API_BASE_URL}/ads?${queryParams.toString()}`, { headers });
+  const url = `${API_BASE_URL}/ads?${queryParams.toString()}`;
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => `Could not read error response text from ${response.url}`);
-    console.error(`Failed to fetch ads (simple list). Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
-    throw new Error(`Failed to fetch ads. Status: ${response.status}. ${errorText}`);
+  try {
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => `Could not read error response text from ${url}`);
+      console.error(`Failed to fetch ads (simple list). Status: ${response.status}, URL: ${url}, Response: ${errorText}`);
+      throw new Error(`Failed to fetch ads. Status: ${response.status}. ${errorText}`);
+    }
+    const data: Page<AdvertisementResponseDto> = await response.json();
+    data.content = data.content.map(ad => ({ ...ad, previewImageUrl: toAbsoluteImageUrl(ad.previewImageUrl) }));
+    return data;
+  } catch (error) {
+    console.error(`Network error or invalid URL when fetching ads (simple list) from ${url}:`, error);
+    throw new Error(`Network error or invalid URL when fetching ads (simple list). URL: ${url}. Original error: ${(error as Error).message}`);
   }
-  const data: Page<AdvertisementResponseDto> = await response.json();
-  data.content = data.content.map(ad => ({ ...ad, previewImageUrl: toAbsoluteImageUrl(ad.previewImageUrl) }));
-  return data;
 };
 
 export const searchAds = async (
@@ -155,7 +183,7 @@ export const searchAds = async (
   const { page = 0, size = 12, sort = 'createdAt,desc', ...filters } = criteria;
 
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for searchAds");
+    console.warn("API_BASE_URL not set or invalid, using mock data for searchAds");
     await new Promise(resolve => setTimeout(resolve, 100));
     let filteredMockAds = [...mockAds];
     if (filters.keyword) filteredMockAds = filteredMockAds.filter(ad => ad.title.toLowerCase().includes(filters.keyword!.toLowerCase()) || ad.description.toLowerCase().includes(filters.keyword!.toLowerCase()));
@@ -181,50 +209,60 @@ export const searchAds = async (
     if (value !== undefined) queryParams.append(key, String(value));
   });
   const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
-  const response = await fetch(`${API_BASE_URL}/ads/search?${queryParams.toString()}`, { headers });
+  const url = `${API_BASE_URL}/ads/search?${queryParams.toString()}`;
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => `Could not read error response text for searchAds from ${response.url}`);
-    console.error(`Failed to search ads. Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
-    throw new Error(`Failed to search ads. Status: ${response.status}. ${errorText}`);
+  try {
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => `Could not read error response text for searchAds from ${url}`);
+      console.error(`Failed to search ads. Status: ${response.status}, URL: ${url}, Response: ${errorText}`);
+      throw new Error(`Failed to search ads. Status: ${response.status}. ${errorText}`);
+    }
+    const data: Page<AdvertisementResponseDto> = await response.json();
+    data.content = data.content.map(ad => ({ ...ad, previewImageUrl: toAbsoluteImageUrl(ad.previewImageUrl) }));
+    return data;
+  } catch (error) {
+    console.error(`Network error or invalid URL when searching ads from ${url}:`, error);
+    throw new Error(`Network error or invalid URL when searching ads. URL: ${url}. Original error: ${(error as Error).message}`);
   }
-  const data: Page<AdvertisementResponseDto> = await response.json();
-  data.content = data.content.map(ad => ({ ...ad, previewImageUrl: toAbsoluteImageUrl(ad.previewImageUrl) }));
-  return data;
 };
 
 
 export const getAdById = async (id: number): Promise<AdvertisementDetailDto | null> => {
    if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for getAdById");
+    console.warn("API_BASE_URL not set or invalid, using mock data for getAdById");
     await new Promise(resolve => setTimeout(resolve, 100));
     const ad = mockAds.find(ad => ad.id === id);
     if (ad) {
-      // Ensure mock data also uses absolute URLs if API_BASE_URL is hypothetically set for mocks, though current mocks use placehold.co
       ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
       ad.previewImageUrl = ad.images.find(img => img.isPreview)?.imageUrl || toAbsoluteImageUrl(ad.images[0]?.imageUrl);
     }
     return ad || null;
   }
-  const response = await fetch(`${API_BASE_URL}/ads/${id}`);
-  if (!response.ok) {
-    if (response.status === 404) return null;
-    const errorText = await response.text().catch(() => `Could not read error response text from ${response.url}`);
-    console.error(`Failed to fetch ad ${id}. Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
-    throw new Error(`Failed to fetch ad ${id}. Status: ${response.status}. ${errorText}`);
+  const url = `${API_BASE_URL}/ads/${id}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      const errorText = await response.text().catch(() => `Could not read error response text from ${url}`);
+      console.error(`Failed to fetch ad ${id}. Status: ${response.status}, URL: ${url}, Response: ${errorText}`);
+      throw new Error(`Failed to fetch ad ${id}. Status: ${response.status}. ${errorText}`);
+    }
+    const ad: AdvertisementDetailDto = await response.json();
+    if (ad) {
+      ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
+      ad.previewImageUrl = ad.images.find(img => img.isPreview)?.imageUrl || toAbsoluteImageUrl(ad.images[0]?.imageUrl) || toAbsoluteImageUrl(ad.previewImageUrl);
+    }
+    return ad;
+  } catch (error) {
+    console.error(`Network error or invalid URL when fetching ad ${id} from ${url}:`, error);
+    throw new Error(`Network error or invalid URL when fetching ad ${id}. URL: ${url}. Original error: ${(error as Error).message}`);
   }
-  const ad: AdvertisementDetailDto = await response.json();
-  if (ad) {
-    ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
-    // Ensure previewImageUrl is also absolute if derived or present
-    ad.previewImageUrl = ad.images.find(img => img.isPreview)?.imageUrl || toAbsoluteImageUrl(ad.images[0]?.imageUrl) || toAbsoluteImageUrl(ad.previewImageUrl);
-  }
-  return ad;
 };
 
 export const login = async (credentials: LoginRequestDto): Promise<JwtResponseDto> => {
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for login");
+    console.warn("API_BASE_URL not set or invalid, using mock data for login");
     await new Promise(resolve => setTimeout(resolve, 100));
     const user = mockUsers.find(u => u.email === credentials.email);
     if (user && credentials.password === 'password123') { 
@@ -232,18 +270,23 @@ export const login = async (credentials: LoginRequestDto): Promise<JwtResponseDt
     }
     throw new Error('Invalid credentials (mock)');
   }
-
-  const response = await fetch(`${API_BASE_URL}/auth/login`, { 
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(credentials),
-  });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
-    console.error(`Login failed. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
-    throw new Error(errorData.message || `Login failed. Status: ${response.status}`);
+  const url = `${API_BASE_URL}/auth/login`;
+  try {
+    const response = await fetch(url, { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
+      console.error(`Login failed. Status: ${response.status}, URL: ${url}, Response: ${JSON.stringify(errorData)}`);
+      throw new Error(errorData.message || `Login failed. Status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error(`Network error or invalid URL during login to ${url}:`, error);
+    throw new Error(`Network error or invalid URL during login. URL: ${url}. Original error: ${(error as Error).message}`);
   }
-  return response.json();
 };
 
 export const register = async (data: UserRegistrationDto, avatar?: File): Promise<UserResponseDto> => {
@@ -254,7 +297,7 @@ export const register = async (data: UserRegistrationDto, avatar?: File): Promis
   }
 
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for register");
+    console.warn("API_BASE_URL not set or invalid, using mock data for register");
     await new Promise(resolve => setTimeout(resolve, 100));
     if (mockUsers.some(u => u.email === data.email)) throw new Error('User with this email already exists (mock)');
     const newUserId = Math.max(...mockUsers.map(u => u.id), 0) + 1;
@@ -265,23 +308,33 @@ export const register = async (data: UserRegistrationDto, avatar?: File): Promis
       totalActiveAdvertisements: 0,
     };
     mockUsers.push(newUserProfileData);
-    const { totalActiveAdvertisements, cityName, ...userResponse } = newUserProfileData as Omit<UserProfileDto, 'cityName'> & { cityName?: string }; // Cast to handle potential undefined cityName from find
-    return userResponse as UserResponseDto;
-  }
+    const { totalActiveAdvertisements, cityName, registeredAt, ...userResponsePartial } = newUserProfileData;
+    const finalUserResponse: UserResponseDto = {
+        ...userResponsePartial,
+        registeredAt: newUserProfileData.registeredAt, 
+    };
 
-  const response = await fetch(`${API_BASE_URL}/auth/register`, { 
-    method: 'POST',
-    body: formData, 
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Registration failed' }));
-    console.error(`Registration failed. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
-    throw new Error(errorData.message || `Registration failed. Status: ${response.status}`);
+    return finalUserResponse;
   }
-  const userResponse: UserResponseDto = await response.json();
-  userResponse.avatarUrl = toAbsoluteImageUrl(userResponse.avatarUrl);
-  return userResponse;
+  const url = `${API_BASE_URL}/auth/register`;
+  try {
+    const response = await fetch(url, { 
+      method: 'POST',
+      body: formData, 
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Registration failed' }));
+      console.error(`Registration failed. Status: ${response.status}, URL: ${url}, Response: ${JSON.stringify(errorData)}`);
+      throw new Error(errorData.message || `Registration failed. Status: ${response.status}`);
+    }
+    const userResponse: UserResponseDto = await response.json();
+    userResponse.avatarUrl = toAbsoluteImageUrl(userResponse.avatarUrl);
+    return userResponse;
+  } catch (error) {
+    console.error(`Network error or invalid URL during registration at ${url}:`, error);
+    throw new Error(`Network error or invalid URL during registration. URL: ${url}. Original error: ${(error as Error).message}`);
+  }
 };
 
 export const createAd = async (data: AdvertisementCreateDto, images: File[] | undefined, token: string): Promise<AdvertisementDetailDto> => {
@@ -292,7 +345,7 @@ export const createAd = async (data: AdvertisementCreateDto, images: File[] | un
   }
   
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for createAd");
+    console.warn("API_BASE_URL not set or invalid, using mock data for createAd");
     await new Promise(resolve => setTimeout(resolve, 100));
     const mockSeller = mockUsers[0]; 
     const newAdId = Math.max(...mockAds.map(ad => ad.id), 0) + 1;
@@ -320,28 +373,34 @@ export const createAd = async (data: AdvertisementCreateDto, images: File[] | un
   }
   
   const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
-  const response = await fetch(`${API_BASE_URL}/ads`, { method: 'POST', body: formData, headers });
+  const url = `${API_BASE_URL}/ads`;
+  try {
+    const response = await fetch(url, { method: 'POST', body: formData, headers });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Failed to create ad' }));
-    console.error(`Failed to create ad. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
-    throw new Error(errorData.message || `Failed to create ad. Status: ${response.status}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Failed to create ad' }));
+      console.error(`Failed to create ad. Status: ${response.status}, URL: ${url}, Response: ${JSON.stringify(errorData)}`);
+      throw new Error(errorData.message || `Failed to create ad. Status: ${response.status}`);
+    }
+    const ad: AdvertisementDetailDto = await response.json();
+    ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
+    ad.previewImageUrl = ad.images.find(img => img.isPreview)?.imageUrl || toAbsoluteImageUrl(ad.images[0]?.imageUrl) || toAbsoluteImageUrl(ad.previewImageUrl);
+    return ad;
+  } catch (error) {
+    console.error(`Network error or invalid URL when creating ad at ${url}:`, error);
+    throw new Error(`Network error or invalid URL when creating ad. URL: ${url}. Original error: ${(error as Error).message}`);
   }
-  const ad: AdvertisementDetailDto = await response.json();
-  ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
-  ad.previewImageUrl = ad.images.find(img => img.isPreview)?.imageUrl || toAbsoluteImageUrl(ad.images[0]?.imageUrl) || toAbsoluteImageUrl(ad.previewImageUrl);
-  return ad;
 };
 
 export const updateAd = async (id: number, data: AdvertisementUpdateDto, images: File[] | undefined, token: string): Promise<AdvertisementDetailDto> => {
   const formData = new FormData();
   formData.append('advertisement', new Blob([JSON.stringify(data)], { type: "application/json" }));
-  if (images) {
+  if (images) { 
     images.forEach(file => formData.append('images', file));
   }
-
+  
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for updateAd");
+    console.warn("API_BASE_URL not set or invalid, using mock data for updateAd");
     await new Promise(resolve => setTimeout(resolve, 100));
     const adIndex = mockAds.findIndex(ad => ad.id === id);
     if (adIndex === -1) throw new Error('Advertisement not found (mock)');
@@ -352,83 +411,101 @@ export const updateAd = async (id: number, data: AdvertisementUpdateDto, images:
     
     if (images && images.length > 0) {
       updatedAd.images = images.map((img, i) => ({ id: Date.now() + i + 1000, imageUrl: toAbsoluteImageUrl(`/uploads/ads/mock-updated-ad${id}-img${i+1}.jpg`)!, isPreview: i === 0 }));
-    } else if (images && images.length === 0) {
+    } else if (images && images.length === 0) { 
         updatedAd.images = [];
     }
-    updatedAd.previewImageUrl = updatedAd.images.find(img => img.isPreview)?.imageUrl || (updatedAd.images.length > 0 ? updatedAd.images[0].imageUrl : undefined);
+    updatedAd.previewImageUrl = updatedAd.images.find(img => img.isPreview)?.imageUrl || (updatedAd.images.length > 0 ? toAbsoluteImageUrl(updatedAd.images[0].imageUrl) : undefined);
     mockAds[adIndex] = updatedAd;
     return updatedAd;
   }
   
   const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
-  const response = await fetch(`${API_BASE_URL}/ads/${id}`, { method: 'PUT', body: formData, headers });
+  const url = `${API_BASE_URL}/ads/${id}`;
+  try {
+    const response = await fetch(url, { method: 'PUT', body: formData, headers });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Failed to update ad' }));
-    console.error(`Failed to update ad. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
-    throw new Error(errorData.message || `Failed to update ad. Status: ${response.status}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Failed to update ad' }));
+      console.error(`Failed to update ad. Status: ${response.status}, URL: ${url}, Response: ${JSON.stringify(errorData)}`);
+      throw new Error(errorData.message || `Failed to update ad. Status: ${response.status}`);
+    }
+    const ad: AdvertisementDetailDto = await response.json();
+    ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
+    ad.previewImageUrl = ad.images.find(img => img.isPreview)?.imageUrl || toAbsoluteImageUrl(ad.images[0]?.imageUrl) || toAbsoluteImageUrl(ad.previewImageUrl);
+    return ad;
+  } catch (error) {
+     console.error(`Network error or invalid URL when updating ad ${id} at ${url}:`, error);
+    throw new Error(`Network error or invalid URL when updating ad ${id}. URL: ${url}. Original error: ${(error as Error).message}`);
   }
-  const ad: AdvertisementDetailDto = await response.json();
-  ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
-  ad.previewImageUrl = ad.images.find(img => img.isPreview)?.imageUrl || toAbsoluteImageUrl(ad.images[0]?.imageUrl) || toAbsoluteImageUrl(ad.previewImageUrl);
-  return ad;
 };
 
 export const getUserProfile = async (userId: number): Promise<UserProfileDto | null> => {
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for getUserProfile");
+    console.warn("API_BASE_URL not set or invalid, using mock data for getUserProfile");
     await new Promise(resolve => setTimeout(resolve, 100));
     const user = mockUsers.find(u => u.id === userId);
     if (user) {
         user.totalActiveAdvertisements = mockAds.filter(ad => ad.sellerId === userId && ad.status === 'ACTIVE').length;
-        user.avatarUrl = toAbsoluteImageUrl(user.avatarUrl); // Though mock uses placehold.co
+        user.avatarUrl = toAbsoluteImageUrl(user.avatarUrl); 
     }
     return user || null;
   }
   
-  const response = await fetch(`${API_BASE_URL}/users/${userId}`); 
-  if (!response.ok) {
-    if (response.status === 404) {
-      console.warn(`User profile for userId ${userId} not found (404) at ${response.url}.`);
-      return null;
+  const url = `${API_BASE_URL}/users/${userId}`;
+  try {
+    const response = await fetch(url); 
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.warn(`User profile for userId ${userId} not found (404) at ${url}.`);
+        return null;
+      }
+      const errorText = await response.text().catch(() => `Could not read error response text from ${url}`);
+      console.error(`Failed to fetch user profile ${userId}. Status: ${response.status}, URL: ${url}, Response: ${errorText}`);
+      throw new Error(`Failed to fetch user profile ${userId}. Status: ${response.status}. ${errorText}`);
     }
-    const errorText = await response.text().catch(() => `Could not read error response text from ${response.url}`);
-    console.error(`Failed to fetch user profile ${userId}. Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
-    throw new Error(`Failed to fetch user profile ${userId}. Status: ${response.status}. ${errorText}`);
+    const profile: UserProfileDto = await response.json();
+    profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl);
+    return profile;
+  } catch (error) {
+    console.error(`Network error or invalid URL when fetching user profile ${userId} from ${url}:`, error);
+    throw new Error(`Network error or invalid URL when fetching user profile ${userId}. URL: ${url}. Original error: ${(error as Error).message}`);
   }
-  const profile: UserProfileDto = await response.json();
-  profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl);
-  return profile;
 };
 
 export const getCurrentUserProfile = async (token: string): Promise<UserProfileDto | null> => {
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for getCurrentUserProfile");
+    console.warn("API_BASE_URL not set or invalid, using mock data for getCurrentUserProfile");
     await new Promise(resolve => setTimeout(resolve, 100));
     const mockJwtUser = mockUsers.find(u => `mock-jwt-token-for-${u.email}` === token) || mockUsers[0];
     if (mockJwtUser) {
         mockJwtUser.totalActiveAdvertisements = mockAds.filter(ad => ad.sellerId === mockJwtUser.id && ad.status === 'ACTIVE').length;
-        mockJwtUser.avatarUrl = toAbsoluteImageUrl(mockJwtUser.avatarUrl); // Though mock uses placehold.co
+        mockJwtUser.avatarUrl = toAbsoluteImageUrl(mockJwtUser.avatarUrl); 
         return mockJwtUser;
     }
     return null;
   }
   
   const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
-  const response = await fetch(`${API_BASE_URL}/users/me`, { headers }); 
+  const url = `${API_BASE_URL}/users/me`;
+  try {
+    const response = await fetch(url, { headers }); 
 
-  if (!response.ok) {
-    if (response.status === 404 || response.status === 401) {
-      console.warn(`User profile not found or unauthorized (status: ${response.status}) at ${response.url}.`);
-      return null;
+    if (!response.ok) {
+      if (response.status === 404 || response.status === 401) {
+        console.warn(`User profile not found or unauthorized (status: ${response.status}) at ${url}.`);
+        return null;
+      }
+      const errorText = await response.text().catch(() => `Could not read error response text for getCurrentUserProfile from ${url}`);
+      console.error(`Failed to fetch current user profile. Status: ${response.status}, URL: ${url}, Response: ${errorText}`);
+      throw new Error(`Failed to fetch current user profile. Status: ${response.status}. ${errorText}`);
     }
-    const errorText = await response.text().catch(() => `Could not read error response text for getCurrentUserProfile from ${response.url}`);
-    console.error(`Failed to fetch current user profile. Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
-    throw new Error(`Failed to fetch current user profile. Status: ${response.status}. ${errorText}`);
+    const profile: UserProfileDto = await response.json();
+    profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl);
+    return profile;
+  } catch (error) {
+    console.error(`Network error or invalid URL when fetching current user profile from ${url}:`, error);
+    throw new Error(`Network error or invalid URL when fetching current user profile. URL: ${url}. Original error: ${(error as Error).message}`);
   }
-  const profile: UserProfileDto = await response.json();
-  profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl);
-  return profile;
 };
 
 export const updateUserProfile = async (data: UserUpdateProfileDto, avatar: File | undefined, token: string): Promise<UserProfileDto> => {
@@ -439,10 +516,10 @@ export const updateUserProfile = async (data: UserUpdateProfileDto, avatar: File
   }
 
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for updateUserProfile");
+    console.warn("API_BASE_URL not set or invalid, using mock data for updateUserProfile");
     await new Promise(resolve => setTimeout(resolve, 100));
     let userToUpdate: UserProfileDto | undefined = mockUsers.find(u => `mock-jwt-token-for-${u.email}` === token);
-    if (!userToUpdate && mockUsers.length > 0) userToUpdate = mockUsers[0]; // Fallback
+    if (!userToUpdate && mockUsers.length > 0) userToUpdate = mockUsers[0]; 
 
     if (userToUpdate) {
         const updatedUser: UserProfileDto = { ...userToUpdate, ...data };
@@ -457,51 +534,69 @@ export const updateUserProfile = async (data: UserUpdateProfileDto, avatar: File
   }
 
   const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
-  const response = await fetch(`${API_BASE_URL}/users/me`, { method: 'PUT', body: formData, headers });
+  const url = `${API_BASE_URL}/users/me`;
+  try {
+    const response = await fetch(url, { method: 'PUT', body: formData, headers });
 
-  if (!response.ok) {
-     const errorData = await response.json().catch(() => ({ message: 'Failed to update profile' }));
-    console.error(`Failed to update profile. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
-    throw new Error(errorData.message || `Failed to update profile. Status: ${response.status}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Failed to update profile' }));
+      console.error(`Failed to update profile. Status: ${response.status}, URL: ${url}, Response: ${JSON.stringify(errorData)}`);
+      throw new Error(errorData.message || `Failed to update profile. Status: ${response.status}`);
+    }
+    const profile: UserProfileDto = await response.json();
+    profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl);
+    return profile;
+  } catch (error) {
+    console.error(`Network error or invalid URL when updating profile at ${url}:`, error);
+    throw new Error(`Network error or invalid URL when updating profile. URL: ${url}. Original error: ${(error as Error).message}`);
   }
-  const profile: UserProfileDto = await response.json();
-  profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl);
-  return profile;
 };
 
 export const getCities = async (): Promise<CityDto[]> => {
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for getCities");
+    console.warn("API_BASE_URL not set or invalid, using mock data for getCities");
     await new Promise(resolve => setTimeout(resolve, 100));
     return mockCities;
   }
-  const response = await fetch(`${API_BASE_URL}/cities`);
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => `Could not read error response text from ${response.url}`);
-    console.error(`Failed to fetch cities. Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
-    throw new Error(`Failed to fetch cities. Status: ${response.status}. ${errorText}`);
+  const url = `${API_BASE_URL}/cities`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => `Could not read error response text from ${url}`);
+      console.error(`Failed to fetch cities. Status: ${response.status}, URL: ${url}, Response: ${errorText}`);
+      throw new Error(`Failed to fetch cities. Status: ${response.status}. ${errorText}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error(`Network error or invalid URL when fetching cities from ${url}:`, error);
+    throw new Error(`Network error or invalid URL when fetching cities. URL: ${url}. Original error: ${(error as Error).message}`);
   }
-  return response.json();
 };
 
 export const getCategories = async (): Promise<CategoryDto[]> => {
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for getCategories");
+    console.warn("API_BASE_URL not set or invalid, using mock data for getCategories");
     await new Promise(resolve => setTimeout(resolve, 100));
     return mockCategories;
   }
-  const response = await fetch(`${API_BASE_URL}/categories`);
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => `Could not read error response text from ${response.url}`);
-    console.error(`Failed to fetch categories. Status: ${response.status}, URL: ${response.url}, Response: ${errorText}`);
-    throw new Error(`Failed to fetch categories. Status: ${response.status}. ${errorText}`);
+  const url = `${API_BASE_URL}/categories`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => `Could not read error response text from ${url}`);
+      console.error(`Failed to fetch categories. Status: ${response.status}, URL: ${url}, Response: ${errorText}`);
+      throw new Error(`Failed to fetch categories. Status: ${response.status}. ${errorText}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error(`Network error or invalid URL when fetching categories from ${url}:`, error);
+    throw new Error(`Network error or invalid URL when fetching categories. URL: ${url}. Original error: ${(error as Error).message}`);
   }
-  return response.json();
 };
 
 export const deleteAd = async (adId: number, token: string): Promise<void> => {
   if (!API_BASE_URL) {
-    console.warn("API_BASE_URL not set, using mock data for deleteAd");
+    console.warn("API_BASE_URL not set or invalid, using mock data for deleteAd");
     await new Promise(resolve => setTimeout(resolve, 100));
     const adIndex = mockAds.findIndex(ad => ad.id === adId);
     const mockCurrentUser = mockUsers.find(u => `mock-jwt-token-for-${u.email}` === token) || mockUsers[0];
@@ -516,11 +611,17 @@ export const deleteAd = async (adId: number, token: string): Promise<void> => {
   }
 
   const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
-  const response = await fetch(`${API_BASE_URL}/ads/${adId}`, { method: 'DELETE', headers });
+  const url = `${API_BASE_URL}/ads/${adId}`;
+  try {
+    const response = await fetch(url, { method: 'DELETE', headers });
 
-  if (!response.ok) { 
-    const errorData = await response.json().catch(() => ({ message: 'Failed to delete ad' }));
-    console.error(`Failed to delete ad. Status: ${response.status}, URL: ${response.url}, Response: ${JSON.stringify(errorData)}`);
-    throw new Error(errorData.message || `Failed to delete ad. Status: ${response.status}`);
+    if (!response.ok) { 
+      const errorData = await response.json().catch(() => ({ message: 'Failed to delete ad' }));
+      console.error(`Failed to delete ad. Status: ${response.status}, URL: ${url}, Response: ${JSON.stringify(errorData)}`);
+      throw new Error(errorData.message || `Failed to delete ad. Status: ${response.status}`);
+    }
+  } catch (error) {
+    console.error(`Network error or invalid URL when deleting ad ${adId} at ${url}:`, error);
+    throw new Error(`Network error or invalid URL when deleting ad ${adId}. URL: ${url}. Original error: ${(error as Error).message}`);
   }
 };
