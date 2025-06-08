@@ -22,7 +22,7 @@ import Image from 'next/image';
 const profileSchema = z.object({
   fullName: z.string().min(2, { message: 'Имя должно содержать не менее 2 символов.' }).optional(),
   phoneNumber: z.string().regex(/^\+?[0-9]{10,15}$/, { message: 'Неверный формат номера телефона.' }).optional().or(z.literal('')),
-  cityId: z.string().optional(),
+  cityId: z.string().optional(), // cityId will be a string from the form, or undefined
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -44,7 +44,7 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
     defaultValues: {
       fullName: profile.fullName || '',
       phoneNumber: profile.phoneNumber || '',
-      cityId: profile.cityId?.toString() || undefined, // Set to undefined if not present for placeholder
+      cityId: profile.cityId?.toString() || undefined,
     },
   });
 
@@ -66,18 +66,16 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
     setFormError(null);
 
     const updateData: UserUpdateProfileDto = {};
-    // Only include fields if they have changed and are not empty (unless allowed by DTO)
     if (data.fullName && data.fullName !== profile.fullName) updateData.fullName = data.fullName;
-    if (data.phoneNumber && data.phoneNumber !== profile.phoneNumber) updateData.phoneNumber = data.phoneNumber;
-    // Handle optional empty string for phone number if backend allows unsetting it
-    if (data.phoneNumber === '' && profile.phoneNumber) updateData.phoneNumber = ''; 
     
-    if (data.cityId && parseInt(data.cityId) !== profile.cityId) {
-        updateData.cityId = parseInt(data.cityId);
-    } else if (!data.cityId && profile.cityId !== undefined) { // If cityId is cleared
-        // Depending on API, you might send null or not send the field
-        // For now, let's assume sending an explicit null or not sending the field handles unsetting
-        // updateData.cityId = null; // Or simply don't set it if API expects omission for no change
+    // Handle phone number: allow empty string to clear it
+    if (data.phoneNumber !== profile.phoneNumber) {
+        updateData.phoneNumber = data.phoneNumber || ''; // Send empty string if cleared
+    }
+    
+    const currentCityIdString = profile.cityId?.toString();
+    if (data.cityId !== currentCityIdString) { // Checks if cityId has changed
+        updateData.cityId = data.cityId ? parseInt(data.cityId) : undefined; // Convert to number or undefined
     }
     
     if (Object.keys(updateData).length === 0 && avatarFile.length === 0) {
@@ -87,17 +85,14 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
     }
 
     try {
-      // updateUserProfile no longer takes userId as it uses /api/users/me
       const updatedProfile = await updateUserProfile(updateData, avatarFile[0], token);
       
-      // Construct a mock JwtResponseDto to update the AuthContext
-      // The actual token doesn't change on profile update, but we need to refresh the user object in context.
       const mockJwtResponse: JwtResponseDto = {
         token: token,
         type: 'Bearer',
-        userId: updatedProfile.id, // from the updated profile
-        email: updatedProfile.email, // from the updated profile
-        roles: user.roles || ['ROLE_USER'], // Persist existing roles, or default
+        userId: updatedProfile.id, 
+        email: updatedProfile.email, 
+        roles: user.roles || ['ROLE_USER'], 
       };
       await updateAuthContextUser(mockJwtResponse);
 
@@ -179,14 +174,19 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Город</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""} >
+                  <Select 
+                    onValueChange={(value) => field.onChange(value === "NO_CITY_SELECTED_PLACEHOLDER" ? undefined : value)} 
+                    value={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите ваш город" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Не выбран</SelectItem> 
+                      {/* Removed the problematic SelectItem with empty value */}
+                      {/* Add an explicit "None" option if desired, but placeholder handles no selection */}
+                      {/* <SelectItem value="NO_CITY_SELECTED_PLACEHOLDER">Не выбран</SelectItem> */}
                       {cities.map(city => (
                         <SelectItem key={city.id} value={city.id.toString()}>{city.name}</SelectItem>
                       ))}
