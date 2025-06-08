@@ -8,7 +8,7 @@ import AdFilters, { type Filters as AdFiltersType } from '@/components/ads/AdFil
 import PaginationControls from '@/components/shared/PaginationControls';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import type { AdvertisementResponseDto, Page, AdvertisementSearchCriteriaDto } from '@/types/api';
-import { searchAds } from '@/lib/mockApi'; // Changed from getAds to searchAds
+import { searchAds } from '@/lib/mockApi';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Info } from "lucide-react";
@@ -34,7 +34,6 @@ export default function HomePage() {
       categoryId: params.get('categoryId') ? parseInt(params.get('categoryId')!) : undefined,
       minPrice: params.get('minPrice') ? parseFloat(params.get('minPrice')!) : undefined,
       maxPrice: params.get('maxPrice') ? parseFloat(params.get('maxPrice')!) : undefined,
-      // condition and sellerId are not in AdFiltersType yet, but API supports them
     };
   });
 
@@ -48,21 +47,24 @@ export default function HomePage() {
         ...filters,
         page,
         size: ADS_PER_PAGE,
-        sort: 'createdAt,desc', // Default sort or make it configurable
+        sort: 'createdAt,desc', 
       };
-      const data = await searchAds(searchCriteria, authToken); // Use searchAds
+      console.log("Fetching ads with criteria:", searchCriteria, "Token:", authToken ? "Present" : "Absent");
+      const data = await searchAds(searchCriteria, authToken);
       setAdsPage(data);
     } catch (err) {
-      setError((err as Error).message || 'Не удалось загрузить объявления. Попробуйте позже.');
-      console.error(err);
+      const errorMessage = (err as Error).message || 'Не удалось загрузить объявления. Попробуйте позже.';
+      setError(errorMessage);
+      console.error("Error in fetchAdvertisements:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [token]); // Added token to dependency array as it's used in searchAds
+  }, [token]);
 
   useEffect(() => {
+    // Pass token explicitly here. fetchAdvertisements will be recreated if token changes.
     fetchAdvertisements(currentPage, currentFilters, token);
-  }, [currentPage, currentFilters, fetchAdvertisements, token]);
+  }, [currentPage, currentFilters, fetchAdvertisements]);
 
   const handleFilterChange = (newFilters: AdFiltersType) => {
     setCurrentFilters(newFilters);
