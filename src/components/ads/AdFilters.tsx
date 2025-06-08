@@ -91,8 +91,8 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
           </div>
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-foreground mb-1">Категория</label>
-            <Select 
-              value={categoryId === undefined ? ALL_ITEMS_SENTINEL_VALUE : categoryId} 
+            <Select
+              value={categoryId === undefined ? ALL_ITEMS_SENTINEL_VALUE : categoryId}
               onValueChange={(value) => setCategoryId(value === ALL_ITEMS_SENTINEL_VALUE ? undefined : value)}
             >
               <SelectTrigger id="category">
@@ -108,8 +108,8 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
           </div>
           <div>
             <label htmlFor="city" className="block text-sm font-medium text-foreground mb-1">Город</label>
-            <Select 
-              value={cityId === undefined ? ALL_ITEMS_SENTINEL_VALUE : cityId} 
+            <Select
+              value={cityId === undefined ? ALL_ITEMS_SENTINEL_VALUE : cityId}
               onValueChange={(value) => setCityId(value === ALL_ITEMS_SENTINEL_VALUE ? undefined : value)}
             >
               <SelectTrigger id="city">
@@ -147,10 +147,13 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
               />
             </div>
           </div>
-          <div className="flex space-x-2">
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90">Применить</Button>
-            <Button type="button" variant="outline" onClick={handleReset} className="w-auto" aria-label="Сбросить фильтры">
+          <div className="flex flex-col gap-2 sm:flex-row sm:space-x-2 pt-4 xl:pt-0">
+            <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
+              Применить
+            </Button>
+            <Button type="button" variant="outline" onClick={handleReset} className="w-full sm:w-auto" aria-label="Сбросить фильтры">
               <X className="h-4 w-4" />
+              <span className="sm:hidden ml-2">Сбросить</span>
             </Button>
           </div>
         </form>

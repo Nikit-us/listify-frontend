@@ -31,7 +31,7 @@ import { deleteAd as apiDeleteAd } from '@/lib/mockApi';
 const conditionMap = {
   NEW: 'Новое',
   USED_PERFECT: 'Б/у, идеальное',
-  USED_LIKE_NEW: 'Б/у, как новое', // Kept for backward compatibility if API still sends it, though OpenAPI shows USED_PERFECT
+  USED_LIKE_NEW: 'Б/у, как новое',
   USED_GOOD: 'Б/у, хорошее',
   USED_FAIR: 'Б/у, удовлетворительное',
 };
@@ -45,7 +45,7 @@ export default function AdDetailPage() {
   const [ad, setAd] = useState<AdvertisementDetailDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, isAuthenticated, token } = useAuth(); 
+  const { user, isAuthenticated, token } = useAuth();
 
   useEffect(() => {
     if (isNaN(id)) {
@@ -76,7 +76,7 @@ export default function AdDetailPage() {
   }, [id]);
 
   const handleDeleteAd = async () => {
-    if (!ad || !user || !token) { 
+    if (!ad || !user || !token) {
         toast({
             variant: "destructive",
             title: "Ошибка",
@@ -90,7 +90,7 @@ export default function AdDetailPage() {
         title: "Успех!",
         description: "Объявление было успешно удалено.",
       });
-      router.push('/'); 
+      router.push('/');
     } catch (error) {
       console.error("Failed to delete ad:", error);
       toast({
@@ -152,13 +152,13 @@ export default function AdDetailPage() {
               </div>
             </div>
             {isOwner && (
-              <div className="flex space-x-2">
-                <Button variant="outline" onClick={() => router.push(`/ads/${ad.id}/edit`)}>
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-4 md:mt-0 self-stretch sm:self-auto">
+                <Button variant="outline" onClick={() => router.push(`/ads/${ad.id}/edit`)} className="w-full sm:w-auto">
                   <Edit className="mr-2 h-4 w-4" /> Редактировать
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive">
+                    <Button variant="destructive" className="w-full sm:w-auto">
                       <Trash2 className="mr-2 h-4 w-4" /> Удалить
                     </Button>
                   </AlertDialogTrigger>
@@ -178,7 +178,7 @@ export default function AdDetailPage() {
               </div>
             )}
           </div>
-          
+
           <div className="text-4xl font-bold text-accent">
             {ad.price.toLocaleString('ru-RU', { style: 'currency', currency: 'BYN' })}
           </div>
@@ -215,7 +215,7 @@ export default function AdDetailPage() {
               </div>
             </div>
           </div>
-          
+
           <div>
             <h2 className="text-xl font-semibold mb-2">Описание</h2>
             <p className="text-foreground/80 whitespace-pre-wrap leading-relaxed">{ad.description}</p>
@@ -226,3 +226,4 @@ export default function AdDetailPage() {
     </div>
   );
 }
+
