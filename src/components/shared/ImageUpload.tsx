@@ -29,11 +29,18 @@ export default function ImageUpload({
 }: ImageUploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  // Initialize currentExistingImages from the prop.
+  // If existingImageUrls prop changes later, this state won't automatically update
+  // unless ProfileForm explicitly manages and re-passes it, which it currently doesn't.
+  // For the current usage in ProfileForm, this is fine as it uses the default.
   const [currentExistingImages, setCurrentExistingImages] = useState(existingImageUrls);
 
-  useEffect(() => {
-    setCurrentExistingImages(existingImageUrls);
-  }, [existingImageUrls]);
+  // This useEffect was removed as it might contribute to update loops
+  // if existingImageUrls (default prop []) gets a new reference on re-renders.
+  // The initial useState(existingImageUrls) should handle the default case.
+  // useEffect(() => {
+  //   setCurrentExistingImages(existingImageUrls);
+  // }, [existingImageUrls]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = maxFiles === 1 ? acceptedFiles.slice(0, 1) : [...files, ...acceptedFiles].slice(0, maxFiles);
