@@ -59,12 +59,12 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [token]); // Depends on token for re-memoization if token changes
 
   useEffect(() => {
     // Pass token explicitly here. fetchAdvertisements will be recreated if token changes.
     fetchAdvertisements(currentPage, currentFilters, token);
-  }, [currentPage, currentFilters, fetchAdvertisements]);
+  }, [currentPage, currentFilters, fetchAdvertisements, token]); // Explicitly include token, as fetchAdvertisements uses it
 
   const handleFilterChange = (newFilters: AdFiltersType) => {
     setCurrentFilters(newFilters);
@@ -145,3 +145,4 @@ export default function HomePage() {
     </div>
   );
 }
+

@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { JwtResponseDto, UserProfileDto } from '@/types/api';
-import { getCurrentUserProfile } from '@/lib/mockApi'; // Changed to getCurrentUserProfile
+import { getCurrentUserProfile } from '@/lib/mockApi';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -24,15 +24,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const fetchProfile = useCallback(async (authToken: string) => { // Renamed for clarity
+  const fetchProfile = useCallback(async (authToken: string) => {
     try {
-      const profile = await getCurrentUserProfile(authToken); // Use getCurrentUserProfile
-      setUser(profile);
-      if (!profile) { // If profile is null (e.g. token invalid, user deleted)
+      const newProfile = await getCurrentUserProfile(authToken);
+      setUser(prevUser => {
+        // Shallow compare to prevent unnecessary reference change if data is identical
+        if (prevUser && newProfile &&
+            prevUser.id === newProfile.id &&
+            prevUser.email === newProfile.email &&
+            prevUser.fullName === newProfile.fullName &&
+            prevUser.avatarUrl === newProfile.avatarUrl &&
+            prevUser.cityId === newProfile.cityId &&
+            prevUser.cityName === newProfile.cityName &&
+            prevUser.phoneNumber === newProfile.phoneNumber &&
+            prevUser.registeredAt === newProfile.registeredAt &&
+            prevUser.totalActiveAdvertisements === newProfile.totalActiveAdvertisements
+        ) {
+          return prevUser;
+        }
+        return newProfile; // This can be newProfile object or null
+      });
+
+      if (!newProfile) { // If profile fetch failed or returned null (e.g. token invalid)
         setToken(null);
+        setUser(null); // Ensure user is also null
         if (typeof window !== 'undefined') {
           localStorage.removeItem('authToken');
-          localStorage.removeItem('authUserMeta'); // Keep this for consistency if needed elsewhere, though API spec implies JWT is king
         }
       }
     } catch (error) {
@@ -41,14 +58,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       if (typeof window !== 'undefined') {
         localStorage.removeItem('authToken');
-        localStorage.removeItem('authUserMeta');
       }
     }
   }, []);
 
   useEffect(() => {
     const storedToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-    // const storedUserMeta = typeof window !== 'undefined' ? localStorage.getItem('authUserMeta') : null; // User meta might be stale, prefer fetching profile with token
     
     if (storedToken) {
       setToken(storedToken);
@@ -61,10 +76,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (authResponse: JwtResponseDto) => {
     setIsLoading(true);
     setToken(authResponse.token);
-    // Store only token. User meta (userId, email) is in token and profile will be fetched.
     if (typeof window !== 'undefined') {
       localStorage.setItem('authToken', authResponse.token);
-      // localStorage.setItem('authUserMeta', JSON.stringify({ userId: authResponse.userId, email: authResponse.email })); // Optionally store for quick access but fetchProfile is source of truth
     }
     await fetchProfile(authResponse.token);
     setIsLoading(false);
@@ -75,9 +88,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('authToken');
-      localStorage.removeItem('authUserMeta');
     }
-    router.push('/login'); // Redirect to login page
+    router.push('/login');
   }, [router]);
 
   return (
@@ -94,3 +106,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
