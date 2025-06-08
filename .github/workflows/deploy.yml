@@ -1,0 +1,55 @@
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Или master, в зависимости от вашей основной ветки
+  workflow_dispatch: # Позволяет запускать воркфлоу вручную из интерфейса GitHub
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Укажите версию Node.js, соответствующую вашему проекту
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js app
+        # Убедитесь, что NEXT_PUBLIC_API_BASE_URL доступна во время сборки,
+        # если она не жестко закодирована, а берется из переменных окружения GitHub Actions Secrets.
+        # Для GitHub Pages, если сайт будет в подпапке (username.github.io/repo-name),
+        # возможно, потребуется basePath в next.config.js и assetPrefix.
+        # Но action peaceiris/actions-gh-pages часто хорошо справляется с этим.
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL }}
+
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out # Next.js выводит статические файлы в папку 'out' при output: 'export'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
