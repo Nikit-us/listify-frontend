@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -10,11 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { Edit, Mail, Phone, MapPin, CalendarCheck2, PackageSearch, Settings } from 'lucide-react';
+import { Edit, Mail, Phone, MapPin, CalendarCheck2, PackageSearch, Settings, ListChecks } from 'lucide-react'; // Added ListChecks
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import type { AdvertisementResponseDto, Page } from '@/types/api';
-import { getAds } from '@/lib/mockApi'; 
+import type { AdvertisementResponseDto, Page, AdvertisementSearchCriteriaDto } from '@/types/api';
+import { searchAds } from '@/lib/mockApi'; // Changed from getAds to searchAds
 import AdCard from '@/components/ads/AdCard';
 import PaginationControls from '@/components/shared/PaginationControls';
 
@@ -25,58 +25,36 @@ function UserAdsSection({ userId }: { userId: number }) {
   const [isLoadingAds, setIsLoadingAds] = useState(true);
   const [adsError, setAdsError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const { token } = useAuth(); // Get token for authenticated requests
+
+  const fetchUserAdvertisements = useCallback(async (page: number) => {
+    setIsLoadingAds(true);
+    setAdsError(null);
+    if (!userId || !token) {
+      setAdsError('Не удалось определить пользователя или отсутствует токен для запроса.');
+      setIsLoadingAds(false);
+      return;
+    }
+    try {
+      const searchCriteria: AdvertisementSearchCriteriaDto = {
+        sellerId: userId,
+        page,
+        size: ADS_PER_PAGE,
+        sort: 'createdAt,desc',
+      };
+      const data = await searchAds(searchCriteria, token);
+      setAdsPage(data);
+    } catch (err) {
+      setAdsError('Не удалось загрузить объявления.');
+      console.error(err);
+    } finally {
+      setIsLoadingAds(false);
+    }
+  }, [userId, token]); // Added token to dependency array
 
   useEffect(() => {
-    const fetchUserAds = async (page: number) => {
-      setIsLoadingAds(true);
-      setAdsError(null);
-      try {
-        // Mock API doesn't have a direct getAdsByUserId, so we filter client-side for this mock
-        // In a real app, this would be an API call: getAds({ userId, page, size })
-        const allAdsPage = await getAds(0, 1000); // Fetch all ads (mock behavior)
-        const userAds = allAdsPage.content.filter(ad => {
-            // This is a hack because AdvertisementResponseDto doesn't have sellerId
-            // We need to adjust mockApi or types for a real scenario.
-            // For now, this won't work accurately.
-            // A better mock API would have `getAdsBySellerId(sellerId, page, size)`
-            // Forcing this to show an example, but it's not truly filtering by sellerId yet.
-            // Let's assume getAds can take a sellerId filter for the mock.
-            return true; // This will show all ads, not just user's. Need API change.
-        });
-        
-        // For demonstration, let's simulate getting ads for the current user by filtering ALL ads
-        // This is inefficient and not how a real API would work.
-        // A proper API would be /api/users/{userId}/ads or /api/ads?sellerId={userId}
-        const allAdsData = await getAds(0, 1000, {}); // Fetch a large number of ads
-        const filteredUserAds = allAdsData.content.filter(ad => {
-            // Hack: using ad.id to simulate sellerId matching because mock structure
-            // In real app: ad.sellerId === userId
-            // For now, just showing some ads for UI demo, not actual user ads
-            return (ad.id % 5 === 0 && userId % 2 === 0) || (ad.id % 3 === 0 && userId % 2 !== 0);
-        });
-
-        const totalElements = filteredUserAds.length;
-        const totalPages = Math.ceil(totalElements / ADS_PER_PAGE);
-        const paginatedContent = filteredUserAds.slice(page * ADS_PER_PAGE, (page + 1) * ADS_PER_PAGE);
-
-        setAdsPage({
-            content: paginatedContent,
-            totalPages,
-            totalElements,
-            size: ADS_PER_PAGE,
-            number: page,
-        });
-
-
-      } catch (err) {
-        setAdsError('Не удалось загрузить объявления.');
-        console.error(err);
-      } finally {
-        setIsLoadingAds(false);
-      }
-    };
-    fetchUserAds(currentPage);
-  }, [userId, currentPage]);
+    fetchUserAdvertisements(currentPage);
+  }, [userId, currentPage, fetchUserAdvertisements]);
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
@@ -93,13 +71,15 @@ function UserAdsSection({ userId }: { userId: number }) {
           <AdCard key={ad.id} ad={ad} />
         ))}
       </div>
-      <PaginationControls
-        currentPage={adsPage.number}
-        totalPages={adsPage.totalPages}
-        onPageChange={handlePageChange}
-        hasNextPage={adsPage.number < adsPage.totalPages - 1}
-        hasPrevPage={adsPage.number > 0}
-      />
+      {adsPage.totalPages > 1 && (
+        <PaginationControls
+            currentPage={adsPage.number}
+            totalPages={adsPage.totalPages}
+            onPageChange={handlePageChange}
+            hasNextPage={adsPage.number < adsPage.totalPages - 1}
+            hasPrevPage={adsPage.number > 0}
+        />
+      )}
     </div>
   );
 }
@@ -153,13 +133,13 @@ export default function ProfilePage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <Tabs defaultValue={initialTab} className="w-full">
+          <Tabs defaultValue={initialTab} className="w-full" onValueChange={(value) => router.push(`/profile/me?tab=${value}`, { scroll: false })}>
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 rounded-none border-b">
               <TabsTrigger value="info" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none">
                 <PackageSearch className="mr-2 h-4 w-4 hidden sm:inline-block"/> Информация
               </TabsTrigger>
               <TabsTrigger value="my-ads" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none">
-                <Settings className="mr-2 h-4 w-4 hidden sm:inline-block"/> Мои объявления
+                <ListChecks className="mr-2 h-4 w-4 hidden sm:inline-block"/> Мои объявления 
               </TabsTrigger>
                <TabsTrigger value="settings" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none">
                 <Settings className="mr-2 h-4 w-4 hidden sm:inline-block"/> Настройки
