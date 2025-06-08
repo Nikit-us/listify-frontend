@@ -22,12 +22,12 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { ArrowLeft } from 'lucide-react';
 
 const adSchema = z.object({
-  title: z.string().min(5, { message: 'Заголовок должен быть не менее 5 символов.' }).max(100, { message: 'Заголовок не должен превышать 100 символов.' }),
+  title: z.string().min(5, { message: 'Заголовок должен быть не менее 5 символов.' }).max(50, { message: 'Заголовок не должен превышать 50 символов.' }),
   description: z.string().min(20, { message: 'Описание должно быть не менее 20 символов.' }).max(5000, { message: 'Описание не должно превышать 5000 символов.' }),
   price: z.coerce.number().min(0, { message: 'Цена не может быть отрицательной.' }),
   categoryId: z.string().min(1, { message: 'Выберите категорию.' }),
   cityId: z.string().min(1, { message: 'Выберите город.' }),
-  condition: z.enum(['NEW', 'USED_LIKE_NEW', 'USED_GOOD', 'USED_FAIR'], { required_error: 'Укажите состояние товара.' }),
+  condition: z.enum(['NEW', 'USED_PERFECT', 'USED_GOOD', 'USED_FAIR'], { required_error: 'Укажите состояние товара.' }),
 });
 
 type AdFormValues = z.infer<typeof adSchema>;
@@ -38,7 +38,7 @@ interface AdFormProps {
 
 const conditionOptions = [
   { value: 'NEW', label: 'Новое' },
-  { value: 'USED_LIKE_NEW', label: 'Б/у, как новое' },
+  { value: 'USED_PERFECT', label: 'Б/у, идеальное' },
   { value: 'USED_GOOD', label: 'Б/у, хорошее' },
   { value: 'USED_FAIR', label: 'Б/у, удовлетворительное' },
 ];
@@ -95,8 +95,6 @@ export default function AdForm({ adId }: AdFormProps) {
       setIsLoading(true);
       getAdById(adId).then(adData => {
         if (adData) {
-          // Проверка владельца объявления (важно для реального API, где токен определяет пользователя)
-          // В моковом API sellerId используется, в реальном API это может проверяться на бэкенде по токену
           if(user && adData.sellerId !== user.id) { 
              toast({ variant: "destructive", title: "Ошибка доступа", description: "Вы не можете редактировать это объявление." });
              router.push(`/ads/${adId}`);
@@ -128,17 +126,18 @@ export default function AdForm({ adId }: AdFormProps) {
   
   const handleRemoveExistingImage = (id: string | number) => {
     setExistingImages(current => current.filter(img => img.id !== id));
+    // Here you might want to track removed existing images to send to backend if API supports partial image updates
   };
 
   const onSubmit = async (data: AdFormValues) => {
-    if (!user || !token) { // Проверяем наличие токена
+    if (!user || !token) {
       toast({ variant: "destructive", title: "Ошибка", description: "Пожалуйста, войдите в систему." });
       return;
     }
     setIsLoading(true);
     setFormError(null);
     
-    const adPayload = { // Renamed to avoid confusion with 'data' from RHF
+    const adPayloadBase = { 
       ...data,
       price: Number(data.price),
       categoryId: parseInt(data.categoryId),
@@ -148,12 +147,44 @@ export default function AdForm({ adId }: AdFormProps) {
     try {
       let savedAd: AdvertisementDetailDto;
       if (adId) {
-        // Передаем token в updateAd
-        savedAd = await updateAd(adId, adPayload as AdvertisementUpdateDto, images.length > 0 ? images : undefined, token);
+        // For update, construct AdvertisementUpdateDto
+        const updatePayload: AdvertisementUpdateDto = {
+            title: data.title,
+            description: data.description,
+            price: Number(data.price),
+            categoryId: parseInt(data.categoryId),
+            cityId: parseInt(data.cityId),
+            condition: data.condition,
+            // status could be part of a more complex form if needed
+        };
+        // Only send images if they have changed or if explicitly managing them (e.g., removing all)
+        // The API spec says "If provided, replaces all existing images. If an empty list is sent, all images are removed. If the part is omitted entirely, images are not changed."
+        // Current ImageUpload sends new files. If existing images are removed, `images` might be empty.
+        // This logic needs to be precise based on how you want to handle "omitted" vs "empty list".
+        // For simplicity, if new images are added, we send them. If all images are removed (new and existing), we'd send an empty array.
+        // This mockAPI version sends 'images' if new images exist, or if 'images' is explicitly set to an empty array to clear.
+        // For a real API, you might need to track `removedImageIds` if the API supports partial updates.
+        
+        let imagesToSend: File[] | undefined = undefined;
+        if (images.length > 0 || (images.length === 0 && existingImages.length === 0 && form.formState.dirtyFields.title /* or other way to detect intent to clear */)) {
+          // If new images are present, or if all images (new and existing) are gone AND the form was touched (implying intent to clear)
+          imagesToSend = images;
+        }
+
+
+        savedAd = await updateAd(adId, updatePayload, imagesToSend, token);
         toast({ title: "Успех!", description: "Объявление успешно обновлено." });
       } else {
-        // Передаем token в createAd. user.id из createAd убран, т.к. бэк должен брать его из токена
-        savedAd = await createAd(adPayload as AdvertisementCreateDto, images, token);
+        // For create, construct AdvertisementCreateDto
+        const createPayload: AdvertisementCreateDto = {
+          title: data.title,
+          description: data.description,
+          price: Number(data.price),
+          categoryId: parseInt(data.categoryId),
+          cityId: parseInt(data.cityId),
+          condition: data.condition,
+        };
+        savedAd = await createAd(createPayload, images, token);
         toast({ title: "Успех!", description: "Объявление успешно создано." });
       }
       router.push(`/ads/${savedAd.id}`);
@@ -294,7 +325,7 @@ export default function AdForm({ adId }: AdFormProps) {
                   onFilesChange={handleImagesChange} 
                   maxFiles={5} 
                   label="" 
-                  existingImageUrls={existingImages}
+                  existingImageUrls={existingImages.map(img => ({id: img.id, url: img.url}))}
                   onRemoveExistingImage={handleRemoveExistingImage}
                   aspectRatio="aspect-square"
                 />

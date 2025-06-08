@@ -15,16 +15,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ImageUpload from '@/components/shared/ImageUpload';
 import { register as apiRegister, getCities } from '@/lib/mockApi';
-import type { CityDto } from '@/types/api';
+import type { CityDto, UserRegistrationDto } from '@/types/api';
 import { useToast } from "@/hooks/use-toast";
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 
 const registerSchema = z.object({
-  fullName: z.string().min(2, { message: 'Имя должно содержать не менее 2 символов.' }),
-  email: z.string().email({ message: 'Неверный формат email.' }),
-  password: z.string().min(6, { message: 'Пароль должен быть не менее 6 символов.' }),
-  confirmPassword: z.string().min(6, { message: 'Пароль должен быть не менее 6 символов.' }),
-  phoneNumber: z.string().regex(/^\+?[0-9]{10,15}$/, { message: 'Неверный формат номера телефона.' }), // Basic E.164 like regex
+  fullName: z.string().min(2, { message: 'Имя должно содержать не менее 2 символов.' }).max(100),
+  email: z.string().email({ message: 'Неверный формат email.' }).max(255),
+  password: z.string().min(8, { message: 'Пароль должен быть не менее 8 символов.' }).max(255),
+  confirmPassword: z.string().min(8, { message: 'Пароль должен быть не менее 8 символов.' }).max(255),
+  phoneNumber: z.string().regex(/^\+?[0-9]{10,15}$/, { message: 'Неверный формат номера телефона (например, +375291234567).' }).max(50).optional().or(z.literal('')),
   cityId: z.string().min(1, { message: 'Выберите город.' }),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Пароли не совпадают",
@@ -74,11 +74,12 @@ export default function RegisterForm() {
     setIsLoading(true);
     setError(null);
     try {
-      const registrationData = {
+      const registrationData: UserRegistrationDto = {
         fullName: data.fullName,
         email: data.email,
         password: data.password,
-        phoneNumber: data.phoneNumber,
+        // phoneNumber is optional, send if provided
+        ...(data.phoneNumber && { phoneNumber: data.phoneNumber }), 
         cityId: parseInt(data.cityId),
       };
       await apiRegister(registrationData, avatarFile[0]);
@@ -165,7 +166,7 @@ export default function RegisterForm() {
               name="phoneNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Номер телефона</FormLabel>
+                  <FormLabel>Номер телефона (необязательно)</FormLabel>
                   <FormControl>
                     <Input placeholder="+375291234567" {...field} />
                   </FormControl>
@@ -220,4 +221,3 @@ export default function RegisterForm() {
     </Card>
   );
 }
-

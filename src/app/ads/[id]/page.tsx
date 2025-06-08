@@ -30,7 +30,8 @@ import { deleteAd as apiDeleteAd } from '@/lib/mockApi';
 
 const conditionMap = {
   NEW: 'Новое',
-  USED_LIKE_NEW: 'Б/у, как новое',
+  USED_PERFECT: 'Б/у, идеальное',
+  USED_LIKE_NEW: 'Б/у, как новое', // Kept for backward compatibility if API still sends it, though OpenAPI shows USED_PERFECT
   USED_GOOD: 'Б/у, хорошее',
   USED_FAIR: 'Б/у, удовлетворительное',
 };
@@ -44,7 +45,7 @@ export default function AdDetailPage() {
   const [ad, setAd] = useState<AdvertisementDetailDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, isAuthenticated, token } = useAuth(); // Получаем токен
+  const { user, isAuthenticated, token } = useAuth(); 
 
   useEffect(() => {
     if (isNaN(id)) {
@@ -75,7 +76,7 @@ export default function AdDetailPage() {
   }, [id]);
 
   const handleDeleteAd = async () => {
-    if (!ad || !user || !token) { // Проверяем наличие токена
+    if (!ad || !user || !token) { 
         toast({
             variant: "destructive",
             title: "Ошибка",
@@ -84,7 +85,6 @@ export default function AdDetailPage() {
         return;
     }
     try {
-      // Передаем токен в apiDeleteAd. userId из deleteAd убран, т.к. бэк должен брать его из токена
       await apiDeleteAd(ad.id, token);
       toast({
         title: "Успех!",
@@ -199,7 +199,7 @@ export default function AdDetailPage() {
             <div className="flex items-start">
               <Eye className="h-5 w-5 mr-3 mt-0.5 text-muted-foreground shrink-0" />
               <div>
-                <span className="font-medium">Состояние:</span> {conditionMap[ad.condition] || ad.condition}
+                <span className="font-medium">Состояние:</span> {conditionMap[ad.condition as keyof typeof conditionMap] || ad.condition}
               </div>
             </div>
             <div className="flex items-start">
