@@ -52,7 +52,7 @@ export default function RegisterForm() {
       }
     };
     fetchCitiesData();
-  }, [toast]);
+  }, []); // Changed dependency array to empty
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -78,7 +78,6 @@ export default function RegisterForm() {
         fullName: data.fullName,
         email: data.email,
         password: data.password,
-        // phoneNumber is optional, send if provided
         ...(data.phoneNumber && { phoneNumber: data.phoneNumber }), 
         cityId: parseInt(data.cityId),
       };
@@ -221,3 +220,5 @@ export default function RegisterForm() {
     </Card>
   );
 }
+
+    
