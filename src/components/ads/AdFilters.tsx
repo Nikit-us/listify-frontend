@@ -51,9 +51,9 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
   const [districts, setDistricts] = useState<DistrictDto[]>([]);
   const [cities, setCities] = useState<CityDto[]>([]);
 
-  const [isLocationDataLoading, setIsLocationDataLoading] = useState(false); // For location dropdowns specifically
-  const [isCategoryDataLoading, setIsCategoryDataLoading] = useState(true); // For categories specifically
-  const [isBaseDataLoading, setIsBaseDataLoading] = useState(true); // For overall initial data (regions, categories)
+  const [isLocationDataLoading, setIsLocationDataLoading] = useState(false);
+  const [isCategoryDataLoading, setIsCategoryDataLoading] = useState(true);
+  const [isBaseDataLoading, setIsBaseDataLoading] = useState(true);
 
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
     const fetchInitialData = async () => {
       setIsBaseDataLoading(true);
       setIsCategoryDataLoading(true);
-      setIsLocationDataLoading(true); // Start with true for all location parts
+      setIsLocationDataLoading(true);
 
       try {
         const [categoriesData, regionsData] = await Promise.all([
@@ -81,13 +81,11 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
         setCategoriesTree(categoriesData);
         setRegions(regionsData);
 
-        // Pre-fill districts if region is in initialFilters
         if (initialFilters.regionId) {
           const regionIdStr = initialFilters.regionId.toString();
           const districtsData = await getDistrictsByRegion(parseInt(regionIdStr));
           setDistricts(districtsData);
 
-          // Pre-fill cities if district is also in initialFilters and belongs to the selected region
           if (initialFilters.districtId) {
             const districtIdStr = initialFilters.districtId.toString();
             const districtExistsInFetched = districtsData.some(d => d.id.toString() === districtIdStr);
@@ -95,7 +93,6 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
               const citiesData = await getCitiesByDistrict(parseInt(districtIdStr));
               setCities(citiesData);
             } else {
-              // District from initialFilters might not belong to the initialRegion, clear it
               setSelectedDistrictId(undefined);
               setSelectedCityId(undefined);
               setCities([]);
@@ -105,7 +102,6 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
             setCities([]);
           }
         } else {
-          // No region in initialFilters, clear districts and cities
           setSelectedDistrictId(undefined);
           setSelectedCityId(undefined);
           setDistricts([]);
@@ -118,7 +114,7 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
         setDistricts([]);
         setCities([]);
       } finally {
-        setIsLocationDataLoading(false); // All location fetching attempts (initial) are done
+        setIsLocationDataLoading(false);
         setIsBaseDataLoading(false);
       }
     };
@@ -198,7 +194,7 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
   }
 
   return (
-    <Card className="shadow-sm z-10 bg-background/90 sticky top-[70px]">
+    <Card className="shadow-sm z-10 bg-background/90 mb-8"> {/* Removed sticky and top classes, added mb-8 for spacing */}
       <CardHeader className="pb-4 pt-4">
         <CardTitle className="text-xl flex items-center">
           <Filter className="mr-2 h-5 w-5" /> Фильтры
@@ -232,7 +228,7 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
             <Select
               value={selectedRegionId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedRegionId}
               onValueChange={handleRegionChange}
-              disabled={isLocationDataLoading && !selectedRegionId} // Disable if loading overall, or specifically if no region selected yet
+              disabled={isLocationDataLoading && !selectedRegionId}
             >
               <SelectTrigger id="region"><SelectValue placeholder="Все области" /></SelectTrigger>
               <SelectContent>
@@ -295,3 +291,4 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
     </Card>
   );
 }
+
