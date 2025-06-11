@@ -1,21 +1,20 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ImageUpload from '@/components/shared/ImageUpload';
-import { register as apiRegister, getCities } from '@/lib/mockApi';
-import type { CityDto, UserRegistrationDto } from '@/types/api';
+import { register as apiRegister, getRegions, getDistrictsByRegion, getCitiesByDistrict } from '@/lib/mockApi';
+import type { CityDto, UserRegistrationDto, RegionDto, DistrictDto } from '@/types/api';
 import { useToast } from "@/hooks/use-toast";
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 
@@ -25,6 +24,8 @@ const registerSchema = z.object({
   password: z.string().min(8, { message: 'Пароль должен быть не менее 8 символов.' }).max(255),
   confirmPassword: z.string().min(8, { message: 'Пароль должен быть не менее 8 символов.' }).max(255),
   phoneNumber: z.string().regex(/^\+?[0-9]{10,15}$/, { message: 'Неверный формат номера телефона (например, +375291234567).' }).max(50).optional().or(z.literal('')),
+  regionId: z.string().min(1, { message: 'Выберите область.' }),
+  districtId: z.string().min(1, { message: 'Выберите район.' }),
   cityId: z.string().min(1, { message: 'Выберите город.' }),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Пароли не совпадают",
@@ -35,24 +36,16 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File[]>([]);
+  
+  const [regions, setRegions] = useState<RegionDto[]>([]);
+  const [districts, setDistricts] = useState<DistrictDto[]>([]);
   const [cities, setCities] = useState<CityDto[]>([]);
+  const [isLocationDataLoading, setIsLocationDataLoading] = useState(true);
+
   const router = useRouter();
   const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchCitiesData = async () => {
-      try {
-        const citiesData = await getCities();
-        setCities(citiesData);
-      } catch (err) {
-        console.error("Failed to load cities:", err);
-        toast({ variant: "destructive", title: "Ошибка", description: "Не удалось загрузить список городов." });
-      }
-    };
-    fetchCitiesData();
-  }, []); // Changed dependency array to empty
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -62,9 +55,68 @@ export default function RegisterForm() {
       password: '',
       confirmPassword: '',
       phoneNumber: '',
+      regionId: undefined,
+      districtId: undefined,
       cityId: '',
     },
   });
+
+  const watchedRegionId = form.watch('regionId');
+  const watchedDistrictId = form.watch('districtId');
+
+  useEffect(() => {
+    const fetchInitialRegions = async () => {
+      setIsLocationDataLoading(true);
+      try {
+        setRegions(await getRegions());
+      } catch (err) {
+        console.error("Failed to load regions:", err);
+        toast({ variant: "destructive", title: "Ошибка", description: "Не удалось загрузить список областей." });
+      } finally {
+        setIsLocationDataLoading(false);
+      }
+    };
+    fetchInitialRegions();
+  }, [toast]);
+
+  useEffect(() => {
+    if (watchedRegionId) {
+      const regionNumId = parseInt(watchedRegionId);
+      if (!isNaN(regionNumId)) {
+        setIsLocationDataLoading(true);
+        getDistrictsByRegion(regionNumId)
+          .then(setDistricts)
+          .catch(console.error)
+          .finally(() => setIsLocationDataLoading(false));
+      } else {
+        setDistricts([]);
+      }
+      form.setValue('districtId', undefined);
+      form.setValue('cityId', '');
+      setCities([]);
+    } else {
+      setDistricts([]);
+      setCities([]);
+    }
+  }, [watchedRegionId, form]);
+
+  useEffect(() => {
+    if (watchedDistrictId) {
+      const districtNumId = parseInt(watchedDistrictId);
+      if (!isNaN(districtNumId)) {
+        setIsLocationDataLoading(true);
+        getCitiesByDistrict(districtNumId)
+          .then(setCities)
+          .catch(console.error)
+          .finally(() => setIsLocationDataLoading(false));
+      } else {
+         setCities([]);
+      }
+      form.setValue('cityId', '');
+    } else {
+      setCities([]);
+    }
+  }, [watchedDistrictId, form]);
 
   const handleAvatarChange = (files: File[]) => {
     setAvatarFile(files);
@@ -72,7 +124,7 @@ export default function RegisterForm() {
 
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
-    setError(null);
+    setFormError(null);
     try {
       const registrationData: UserRegistrationDto = {
         fullName: data.fullName,
@@ -88,7 +140,7 @@ export default function RegisterForm() {
       });
       router.push('/login');
     } catch (err) {
-      setError((err as Error).message || 'Произошла ошибка при регистрации.');
+      setFormError((err as Error).message || 'Произошла ошибка при регистрации.');
       toast({
         variant: "destructive",
         title: "Ошибка регистрации",
@@ -173,17 +225,56 @@ export default function RegisterForm() {
                 </FormItem>
               )}
             />
+            
+            <FormField
+              control={form.control}
+              name="regionId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Область</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isLocationDataLoading}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue placeholder="Выберите область" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {regions.map(region => (
+                        <SelectItem key={region.id} value={region.id.toString()}>{region.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="districtId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Район</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isLocationDataLoading || !watchedRegionId || districts.length === 0}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue placeholder="Выберите район" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {districts.map(district => (
+                        <SelectItem key={district.id} value={district.id.toString()}>{district.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="cityId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Город</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isLocationDataLoading || !watchedDistrictId || cities.length === 0}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите ваш город" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Выберите город" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {cities.map(city => (
@@ -201,9 +292,9 @@ export default function RegisterForm() {
               <ImageUpload onFilesChange={handleAvatarChange} maxFiles={1} label="" aspectRatio="aspect-square"/>
             </FormItem>
 
-            {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? <LoadingSpinner className="mr-2"/> : null}
+            {formError && <p className="text-sm font-medium text-destructive">{formError}</p>}
+            <Button type="submit" className="w-full" disabled={isLoading || isLocationDataLoading}>
+              {(isLoading || isLocationDataLoading) ? <LoadingSpinner className="mr-2"/> : null}
               Зарегистрироваться
             </Button>
           </form>
@@ -220,5 +311,3 @@ export default function RegisterForm() {
     </Card>
   );
 }
-
-    

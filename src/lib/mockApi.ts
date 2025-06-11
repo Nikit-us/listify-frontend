@@ -12,8 +12,8 @@ import type {
   UserProfileDto,
   UserUpdateProfileDto,
   CityDto,
-  CategoryDto, // For flat list if needed
-  CategoryTreeDto, // For hierarchical categories
+  CategoryDto, 
+  CategoryTreeDto, 
   RegionDto,
   DistrictDto,
   AdvertisementSearchCriteriaDto,
@@ -27,7 +27,7 @@ const isValidApiBaseUrl = (url?: string): boolean => {
     return false;
   }
   try {
-    new URL(url); // check if it's a valid URL structure
+    new URL(url); 
     return true;
   } catch (e) {
     console.warn(`Provided API_BASE_URL "${url}" is not a valid URL.`);
@@ -43,17 +43,14 @@ const getAssetBaseUrl = (): string => {
   try {
     const url = new URL(API_BASE_URL);
     let basePath = url.origin;
-    // If API_BASE_URL includes /api, remove it for asset base
     if (url.pathname.endsWith('/api')) {
         basePath += url.pathname.substring(0, url.pathname.length - '/api'.length);
     } else {
-        basePath += url.pathname; // Or just use the pathname if it doesn't end with /api
+        basePath += url.pathname; 
     }
-    // Ensure no trailing slash for consistency
     return basePath.replace(/\/$/, '');
 
   } catch (error) {
-    // Fallback for relative paths if API_BASE_URL is just a path like /api
     return API_BASE_URL_FROM_ENV && API_BASE_URL_FROM_ENV.startsWith('/') ? API_BASE_URL_FROM_ENV.replace(/\/api$/, '').replace(/\/$/, '') : '';
   }
 };
@@ -65,66 +62,68 @@ const toAbsoluteImageUrl = (relativePath?: string): string | undefined => {
     return relativePath;
   }
   const assetBase = getAssetBaseUrl();
-  // Ensure relativePath starts with a slash if assetBase is present
   if (assetBase && relativePath.startsWith('/')) {
     return `${assetBase}${relativePath}`;
   }
-  // If assetBase is empty (e.g. API_BASE_URL was just /api), and relativePath is /uploads/...
-  // it might correctly resolve if the Next.js app serves from root.
-  // Or if assetBase is like http://localhost:8080 and relativePath is uploads/... (no leading slash)
-  // this might need adjustment based on actual API response. Assuming API provides /uploads/...
   if (assetBase) return `${assetBase}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`;
-  return relativePath; // Fallback, might be incorrect if assetBase is needed
+  return relativePath; 
 };
 
-
-// MOCK DATA (simplified for brevity, extend as needed)
 let mockRegions: RegionDto[] = [
   { id: 1, name: "Минская область" },
   { id: 2, name: "Гомельская область" },
+  { id: 3, name: "Брестская область" },
 ];
 
 let mockDistricts: DistrictDto[] = [
-  { id: 11, name: "Минский район" }, { id: 12, name: "Борисовский район" },
-  { id: 21, name: "Гомельский район" }, { id: 22, name: "Жлобинский район" },
+  { id: 11, name: "Минский район" }, { id: 12, name: "Борисовский район" }, { id: 13, name: "Солигорский район" },
+  { id: 21, name: "Гомельский район" }, { id: 22, name: "Жлобинский район" }, { id: 23, name: "Речицкий район" },
+  { id: 31, name: "Брестский район" }, { id: 32, name: "Барановичский район" }, { id: 33, name: "Пинский район" },
 ];
-// Simulate relation: districtId to regionId (not in DTO but needed for mock)
-const mockDistrictToRegionMap: { [districtId: number]: number } = { 11:1, 12:1, 21:2, 22:2 };
-
+const mockDistrictToRegionMap: { [districtId: number]: number } = { 11:1, 12:1, 13:1, 21:2, 22:2, 23:2, 31:3, 32:3, 33:3 };
 
 let mockCities: CityDto[] = [
-  { id: 1, name: 'Минск' }, { id: 2, name: 'Гомель' }, { id: 3, name: 'Борисов' }, { id: 4, name: 'Жлобин' }
+  { id: 1, name: 'Минск' }, { id: 2, name: 'Гомель' }, { id: 3, name: 'Борисов' }, { id: 4, name: 'Жлобин' },
+  { id: 5, name: 'Солигорск' }, { id: 6, name: 'Речица' }, { id: 7, name: 'Брест' }, { id: 8, name: 'Барановичи' }, { id: 9, name: 'Пинск' }
 ];
-// Simulate relation: cityId to districtId
-const mockCityToDistrictMap: { [cityId: number]: number } = { 1:11, 2:21, 3:12, 4:22 };
-
+const mockCityToDistrictMap: { [cityId: number]: number } = { 1:11, 3:12, 5:13, 2:21, 4:22, 6:23, 7:31, 8:32, 9:33 };
 
 let mockCategoryTree: CategoryTreeDto[] = [
   { id: 1, name: 'Электроника', children: [
-    { id: 11, name: 'Телефоны', children: [] },
-    { id: 12, name: 'Компьютеры', children: [
+    { id: 11, name: 'Телефоны и Аксессуары', children: [
+        { id: 111, name: 'Мобильные телефоны', children: [] },
+        { id: 112, name: 'Чехлы', children: [] },
+    ]},
+    { id: 12, name: 'Компьютеры и Сети', children: [
       { id: 121, name: 'Ноутбуки', children: [] },
       { id: 122, name: 'Комплектующие', children: [] },
+      { id: 123, name: 'Сетевое оборудование', children: [] },
     ]},
   ]},
-  { id: 2, name: 'Недвижимость', children: [] },
-  { id: 3, name: 'Хобби и отдых', children: [] },
+  { id: 2, name: 'Недвижимость', children: [
+    { id: 21, name: 'Квартиры', children: [] },
+    { id: 22, name: 'Дома и дачи', children: [] },
+  ] },
+  { id: 3, name: 'Хобби и отдых', children: [
+    { id: 31, name: 'Спорттовары', children: [] },
+    { id: 32, name: 'Книги и журналы', children: [] },
+  ]},
 ];
 
 let mockAds: AdvertisementDetailDto[] = Array.from({ length: 25 }, (_, i) => ({
   id: 101 + i,
   title: `Продам ${i % 2 === 0 ? 'ноутбук' : 'велосипед'} #${101 + i}`,
   price: parseFloat((Math.random() * 1000 + 50).toFixed(2)),
-  cityId: (i % 4) + 1, // Use one of the 4 mock cities
-  cityName: mockCities.find(c=>c.id === (i%4)+1)?.name || 'Неизвестный город',
+  cityId: (i % 9) + 1, 
+  cityName: mockCities.find(c=>c.id === (i%9)+1)?.name || 'Неизвестный город',
   createdAt: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
   previewImageUrl: `https://placehold.co/300x200.png?text=Ad+${101 + i}`,
   description: `Отличный товар #${101 + i}, почти новый. Использовался очень бережно, продаю в связи с переездом. Много текста чтобы описание было длинным и занимало несколько строк.`,
   updatedAt: new Date().toISOString(),
   status: 'ACTIVE',
   condition: i % 2 === 0 ? 'USED_GOOD' : 'NEW',
-  categoryId: i % 3 === 0 ? 121 : (i % 3 === 1 ? 11 : 2), // Example category IDs from tree
-  categoryName: i % 3 === 0 ? 'Ноутбуки' : (i % 3 === 1 ? 'Телефоны' : 'Недвижимость'),
+  categoryId: i % 3 === 0 ? 121 : (i % 3 === 1 ? 111 : 21), 
+  categoryName: i % 3 === 0 ? 'Ноутбуки' : (i % 3 === 1 ? 'Мобильные телефоны' : 'Квартиры'),
   sellerId: 12 + (i % 2),
   sellerName: i % 2 === 0 ? 'Иван Петров' : 'Анна Иванова',
   images: [
@@ -169,13 +168,11 @@ const toAdvertisementResponseDto = (ad: AdvertisementDetailDto | AdvertisementRe
   previewImageUrl: toAbsoluteImageUrl(ad.previewImageUrl || (ad as AdvertisementDetailDto).images?.find(img => img.isPreview)?.imageUrl),
 });
 
-// --- API Functions ---
-
 export const getRegions = async (): Promise<RegionDto[]> => {
   if (!API_BASE_URL) {
     console.warn("API_BASE_URL not set or invalid, using mock data for getRegions");
     await new Promise(resolve => setTimeout(resolve, 100));
-    return [...mockRegions];
+    return JSON.parse(JSON.stringify(mockRegions));
   }
   const url = `${API_BASE_URL}/locations/regions`;
   try {
@@ -196,7 +193,7 @@ export const getDistrictsByRegion = async (regionId: number): Promise<DistrictDt
    if (!API_BASE_URL) {
     console.warn("API_BASE_URL not set or invalid, using mock data for getDistrictsByRegion");
     await new Promise(resolve => setTimeout(resolve, 100));
-    return mockDistricts.filter(d => mockDistrictToRegionMap[d.id] === regionId);
+    return JSON.parse(JSON.stringify(mockDistricts.filter(d => mockDistrictToRegionMap[d.id] === regionId)));
   }
   const url = `${API_BASE_URL}/locations/districts?regionId=${regionId}`;
   try {
@@ -217,7 +214,7 @@ export const getCitiesByDistrict = async (districtId: number): Promise<CityDto[]
   if (!API_BASE_URL) {
     console.warn("API_BASE_URL not set or invalid, using mock data for getCitiesByDistrict");
     await new Promise(resolve => setTimeout(resolve, 100));
-    return mockCities.filter(c => mockCityToDistrictMap[c.id] === districtId);
+    return JSON.parse(JSON.stringify(mockCities.filter(c => mockCityToDistrictMap[c.id] === districtId)));
   }
   const url = `${API_BASE_URL}/locations/cities?districtId=${districtId}`;
   try {
@@ -238,7 +235,6 @@ export const getCategoriesAsTree = async (): Promise<CategoryTreeDto[]> => {
   if (!API_BASE_URL) {
     console.warn("API_BASE_URL not set or invalid, using mock data for getCategoriesAsTree");
     await new Promise(resolve => setTimeout(resolve, 100));
-    // Deep clone mock data to prevent accidental modification
     return JSON.parse(JSON.stringify(mockCategoryTree));
   }
   const url = `${API_BASE_URL}/categories/tree`;
@@ -268,11 +264,41 @@ export const searchAds = async (
     let filteredMockAds = [...mockAds];
     if (filters.keyword) filteredMockAds = filteredMockAds.filter(ad => ad.title.toLowerCase().includes(filters.keyword!.toLowerCase()) || ad.description.toLowerCase().includes(filters.keyword!.toLowerCase()));
     if (filters.cityId) filteredMockAds = filteredMockAds.filter(ad => ad.cityId === filters.cityId);
-    // Add filtering for regionId and districtId if needed for mock, though API likely handles this server-side based on cityId.
-    // For mock, we might need to derive cityIds from region/district if those are passed.
+    if (filters.regionId) {
+      const districtsInRegion = mockDistricts.filter(d => mockDistrictToRegionMap[d.id] === filters.regionId).map(d => d.id);
+      const citiesInRegion = mockCities.filter(c => districtsInRegion.includes(mockCityToDistrictMap[c.id])).map(c => c.id);
+      filteredMockAds = filteredMockAds.filter(ad => citiesInRegion.includes(ad.cityId));
+    }
+    if (filters.districtId) {
+      const citiesInDistrict = mockCities.filter(c => mockCityToDistrictMap[c.id] === filters.districtId).map(c => c.id);
+      filteredMockAds = filteredMockAds.filter(ad => citiesInDistrict.includes(ad.cityId));
+    }
     if (filters.minPrice) filteredMockAds = filteredMockAds.filter(ad => ad.price >= filters.minPrice!);
     if (filters.maxPrice) filteredMockAds = filteredMockAds.filter(ad => ad.price <= filters.maxPrice!);
-    if (filters.categoryId) filteredMockAds = filteredMockAds.filter(ad => ad.categoryId === filters.categoryId); // Or check against a flattened tree
+    if (filters.categoryId) {
+      const getAllChildCategoryIds = (tree: CategoryTreeDto[], parentId: number): number[] => {
+        let ids: number[] = [];
+        const findInChildren = (nodes: CategoryTreeDto[], targetId: number) => {
+            for (const node of nodes) {
+                if (node.id === targetId) {
+                    ids.push(node.id);
+                    const collectChildren = (n: CategoryTreeDto) => {
+                        ids.push(n.id);
+                        n.children.forEach(collectChildren);
+                    };
+                    node.children.forEach(collectChildren);
+                    return true; 
+                }
+                if (node.children && findInChildren(node.children, targetId)) return true;
+            }
+            return false;
+        };
+        findInChildren(tree, parentId);
+        return ids.length > 0 ? ids : [parentId]; // Return parentId itself if not found or no children
+      };
+      const categoryIdsToFilter = getAllChildCategoryIds(mockCategoryTree, filters.categoryId);
+      filteredMockAds = filteredMockAds.filter(ad => categoryIdsToFilter.includes(ad.categoryId));
+    }
     if (filters.condition) filteredMockAds = filteredMockAds.filter(ad => ad.condition === filters.condition);
     if (filters.sellerId) filteredMockAds = filteredMockAds.filter(ad => ad.sellerId === filters.sellerId);
 
@@ -316,7 +342,7 @@ export const getAdById = async (id: number): Promise<AdvertisementDetailDto | nu
     await new Promise(resolve => setTimeout(resolve, 100));
     const ad = mockAds.find(ad_ => ad_.id === id);
     if (ad) {
-      const clonedAd = JSON.parse(JSON.stringify(ad)); // Deep clone
+      const clonedAd = JSON.parse(JSON.stringify(ad)); 
       clonedAd.images = clonedAd.images.map((img: AdvertisementImageDto) => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
       clonedAd.previewImageUrl = clonedAd.images.find((img: AdvertisementImageDto) => img.isPreview)?.imageUrl || toAbsoluteImageUrl(clonedAd.images[0]?.imageUrl);
       return clonedAd;
@@ -349,7 +375,7 @@ export const login = async (credentials: LoginRequestDto): Promise<JwtResponseDt
     console.warn("API_BASE_URL not set or invalid, using mock data for login");
     await new Promise(resolve => setTimeout(resolve, 100));
     const user = mockUsers.find(u => u.email === credentials.email);
-    if (user && credentials.password === 'password123') { // Simple mock password check
+    if (user && credentials.password === 'password123') { 
       return { token: `mock-jwt-token-for-${user.email}`, type: 'Bearer', userId: user.id, email: user.email, roles: ['ROLE_USER'] };
     }
     throw new Error('Invalid credentials (mock)');
@@ -395,7 +421,7 @@ export const register = async (data: UserRegistrationDto, avatar?: File): Promis
     const { totalActiveAdvertisements, cityName, ...userResponsePartial } = newUserProfileData;
     const finalUserResponse: UserResponseDto = {
         ...userResponsePartial,
-        cityId: newUserProfileData.cityId, // ensure cityId is part of UserResponseDto if not optional
+        cityId: newUserProfileData.cityId, 
         registeredAt: newUserProfileData.registeredAt,
     };
     return finalUserResponse;
@@ -479,7 +505,6 @@ export const createAd = async (data: AdvertisementCreateDto, images: File[] | un
 
 export const updateAd = async (id: number, data: AdvertisementUpdateDto, newImages: File[] | undefined, token: string): Promise<AdvertisementDetailDto> => {
   const formData = new FormData();
-  // The 'advertisement' part should contain fields like title, description, price, categoryId, cityId, condition, status, AND imageIdsToDelete
   formData.append('advertisement', new Blob([JSON.stringify(data)], { type: "application/json" }));
 
   if (newImages && newImages.length > 0) {
@@ -495,28 +520,36 @@ export const updateAd = async (id: number, data: AdvertisementUpdateDto, newImag
     const existingAd = mockAds[adIndex];
     let updatedAd: AdvertisementDetailDto = { ...existingAd, ...data, updatedAt: new Date().toISOString() };
     if (data.cityId) updatedAd.cityName = mockCities.find(c => c.id === data.cityId)?.name || existingAd.cityName;
-    if (data.categoryId) updatedAd.categoryName = mockCategoryTree.flatMap(ct => ct.children.length > 0 ? ct.children : [ct]).find(c => c.id === data.categoryId)?.name || existingAd.categoryName; // simplified mock
+    
+    const findCategoryName = (categories: CategoryTreeDto[], categoryId: number): string | undefined => {
+        for (const category of categories) {
+            if (category.id === categoryId) return category.name;
+            if (category.children && category.children.length > 0) {
+                const foundName = findCategoryName(category.children, categoryId);
+                if (foundName) return foundName;
+            }
+        }
+        return undefined;
+    };
+    if (data.categoryId) updatedAd.categoryName = findCategoryName(mockCategoryTree, data.categoryId) || existingAd.categoryName;
 
-    // Handle imageIdsToDelete for mock
+
     if (data.imageIdsToDelete && data.imageIdsToDelete.length > 0) {
         updatedAd.images = updatedAd.images.filter(img => !data.imageIdsToDelete?.includes(img.id));
     }
-    // Handle newImages for mock
     if (newImages && newImages.length > 0) {
         const addedImages: AdvertisementImageDto[] = newImages.map((img, i) => ({
-            id: Date.now() + i + 2000, // ensure unique ID
+            id: Date.now() + i + 2000, 
             imageUrl: toAbsoluteImageUrl(`/uploads/ads/mock-updated-ad${id}-newimg${i+1}.jpg`)!,
-            isPreview: updatedAd.images.length === 0 && i === 0, // make first new image preview if no existing images left
+            isPreview: updatedAd.images.length === 0 && i === 0, 
         }));
         updatedAd.images = [...updatedAd.images, ...addedImages];
-        // Ensure only one preview
         let hasPreview = false;
         updatedAd.images = updatedAd.images.map(img => {
             if (img.isPreview && !hasPreview) { hasPreview = true; return img; }
             return {...img, isPreview: false};
         });
         if (!hasPreview && updatedAd.images.length > 0) updatedAd.images[0].isPreview = true;
-
     }
     updatedAd.previewImageUrl = updatedAd.images.find(img => img.isPreview)?.imageUrl || (updatedAd.images.length > 0 ? toAbsoluteImageUrl(updatedAd.images[0].imageUrl) : undefined);
     mockAds[adIndex] = updatedAd;
@@ -582,7 +615,7 @@ export const getCurrentUserProfile = async (token: string): Promise<UserProfileD
   if (!API_BASE_URL) {
     console.warn("API_BASE_URL not set or invalid, using mock data for getCurrentUserProfile");
     await new Promise(resolve => setTimeout(resolve, 100));
-    const mockJwtUser = mockUsers.find(u => `mock-jwt-token-for-${u.email}` === token) || mockUsers[0]; // Fallback to first user if specific token not matched
+    const mockJwtUser = mockUsers.find(u => `mock-jwt-token-for-${u.email}` === token) || mockUsers[0]; 
     if (mockJwtUser) {
         const clonedUser = JSON.parse(JSON.stringify(mockJwtUser));
         clonedUser.totalActiveAdvertisements = mockAds.filter(ad => ad.sellerId === clonedUser.id && ad.status === 'ACTIVE').length;
@@ -627,7 +660,7 @@ export const updateUserProfile = async (data: UserUpdateProfileDto, avatar: File
     console.warn("API_BASE_URL not set or invalid, using mock data for updateUserProfile");
     await new Promise(resolve => setTimeout(resolve, 100));
     let userToUpdateIdx = mockUsers.findIndex(u => `mock-jwt-token-for-${u.email}` === token);
-    if (userToUpdateIdx === -1 && mockUsers.length > 0) userToUpdateIdx = 0; // Fallback for mock
+    if (userToUpdateIdx === -1 && mockUsers.length > 0) userToUpdateIdx = 0; 
 
     if (userToUpdateIdx !== -1) {
         const userToUpdate = mockUsers[userToUpdateIdx];
@@ -682,10 +715,10 @@ export const deleteAd = async (adId: number, token: string): Promise<void> => {
   try {
     const response = await fetch(url, { method: 'DELETE', headers });
 
-    if (!response.ok) { // For DELETE, 204 No Content is a success, response.ok will be true
+    if (!response.ok) {
       let errorMessage = `Failed to delete ad. Status: ${response.status}`;
       try {
-        const errorBody = await response.text(); // Errors from your API might be text
+        const errorBody = await response.text(); 
         if (errorBody) {
             errorMessage += `. ${errorBody}`;
         }
@@ -693,18 +726,16 @@ export const deleteAd = async (adId: number, token: string): Promise<void> => {
       console.error(`Failed to delete ad. Status: ${response.status}, URL: ${url}`);
       throw new Error(errorMessage);
     }
-    // No return for 204
   } catch (error) {
     console.error(`Network error or invalid URL when deleting ad ${adId} at ${url}:`, error);
     throw new Error(`Network error or invalid URL when deleting ad ${adId}. URL: ${url}. Original error: ${(error as Error).message}`);
   }
 };
-// Old getCategories (flat list) - might be deprecated or used for simpler scenarios
+
 export const getCategories = async (): Promise<CategoryDto[]> => {
   if (!API_BASE_URL) {
     console.warn("API_BASE_URL not set or invalid, using mock data for getCategories (flat)");
     await new Promise(resolve => setTimeout(resolve, 100));
-    // Flatten the tree for mock
     const flatten = (categories: CategoryTreeDto[]): CategoryDto[] => {
         let flat: CategoryDto[] = [];
         for (const cat of categories) {
@@ -732,17 +763,13 @@ export const getCategories = async (): Promise<CategoryDto[]> => {
   }
 };
 
-// Old getCities (flat list of all cities) - might be deprecated
-// The new API suggests getting cities by district.
-// If a flat list of all cities is still needed and supported by API at /api/cities (without params):
 export const getAllCitiesFlat = async (): Promise<CityDto[]> => {
   if (!API_BASE_URL) {
     console.warn("API_BASE_URL not set or invalid, using mock data for getAllCitiesFlat");
     await new Promise(resolve => setTimeout(resolve, 100));
-    return [...mockCities]; // Returns all mock cities
+    return JSON.parse(JSON.stringify(mockCities)); 
   }
-  // Check if your API supports a GET /api/cities or similar for all cities
-  const url = `${API_BASE_URL}/locations/cities`; // Assuming /api/locations/cities without districtId returns all
+  const url = `${API_BASE_URL}/locations/cities`; 
   try {
     const response = await fetch(url);
     if (!response.ok) {
@@ -757,10 +784,8 @@ export const getAllCitiesFlat = async (): Promise<CityDto[]> => {
   }
 };
 
-// Function to get a flat list of all cities for RegisterForm/ProfileForm, if API doesn't provide by district
-// This is a placeholder; ideally, the API would provide a way to get all cities or the forms would use the hierarchy.
+// Used by RegisterForm and ProfileForm for a flat list of cities.
+// Ideally, these forms should also use hierarchical selection or the API should provide such an endpoint if needed.
 export const getCities = async (): Promise<CityDto[]> => {
-  // For now, let's assume this means "get all cities" for simplicity in forms that used it before.
-  // In a real app, this might need to be more sophisticated or forms adapted to hierarchical selection.
   return getAllCitiesFlat();
 };

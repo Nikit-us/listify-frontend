@@ -84,8 +84,8 @@ export interface UserResponseDto {
   phoneNumber?: string;
   registeredAt: string; // ISO date string
   avatarUrl?: string;
-  cityId?: number; // Optional in UserResponseDto as per UserProfileDto which it aligns with
-  cityName?: string; // Optional
+  cityId?: number; 
+  cityName?: string; 
 }
 
 export interface AdvertisementCreateDto {
@@ -101,7 +101,7 @@ export type AdvertisementUpdateDto = Partial<Omit<AdvertisementCreateDto, 'categ
   status?: "ACTIVE" | "INACTIVE" | "SOLD";
   categoryId?: number;
   cityId?: number;
-  imageIdsToDelete?: number[]; // Corrected: from previous interaction
+  imageIdsToDelete?: number[];
 };
 
 export interface UserProfileDto extends UserResponseDto {
@@ -122,11 +122,13 @@ export interface RegionDto {
 export interface DistrictDto {
   id: number;
   name: string;
+  // regionId?: number; // Might be useful if API provides it directly
 }
 
 export interface CityDto {
   id: number;
   name: string;
+  // districtId?: number; // Might be useful if API provides it directly
 }
 
 export interface CategoryDto { // Flat category structure
@@ -137,7 +139,7 @@ export interface CategoryDto { // Flat category structure
 export interface CategoryTreeDto { // Hierarchical category structure
   id: number;
   name: string;
-  children: CategoryTreeDto[]; // Assuming children is an array of CategoryTreeDto
+  children: CategoryTreeDto[];
 }
 
 export interface CategoryCreateDto {
@@ -145,17 +147,12 @@ export interface CategoryCreateDto {
   parentCategoryId?: number;
 }
 
-// CityCreateDto is not explicitly in the spec but might be used by admin if there's a POST /api/cities
-// export interface CityCreateDto {
-//   name: string;
-// }
-
 export interface AdvertisementSearchCriteriaDto {
   keyword?: string;
   categoryId?: number;
-  cityId?: number; // For filters, user might select city directly if hierarchy not fully implemented or desired in filters
-  regionId?: number; // For filtering by region
-  districtId?: number; // For filtering by district
+  cityId?: number; 
+  regionId?: number;
+  districtId?: number;
   minPrice?: number;
   maxPrice?: number;
   condition?: "NEW" | "USED_PERFECT" | "USED_GOOD" | "USED_FAIR";

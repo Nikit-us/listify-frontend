@@ -17,7 +17,7 @@ import CategoryTreeSelect from '@/components/shared/CategoryTreeSelect';
 import { 
   createAd, 
   updateAd, 
-  getCategoriesAsTree, // Updated
+  getCategoriesAsTree,
   getRegions,
   getDistrictsByRegion,
   getCitiesByDistrict,
@@ -26,7 +26,7 @@ import {
 import type { 
   AdvertisementCreateDto, 
   AdvertisementUpdateDto, 
-  CategoryTreeDto, // Updated
+  CategoryTreeDto, 
   RegionDto,
   DistrictDto,
   CityDto, 
@@ -42,8 +42,8 @@ const adSchema = z.object({
   description: z.string().min(20, { message: 'Описание должно быть не менее 20 символов.' }).max(5000, { message: 'Описание не должно превышать 5000 символов.' }),
   price: z.coerce.number().min(0, { message: 'Цена не может быть отрицательной.' }),
   categoryId: z.coerce.number({invalid_type_error: 'Выберите категорию.'}).min(1, { message: 'Выберите категорию.' }),
-  regionId: z.string().optional(), // Not sent to backend, used for UI
-  districtId: z.string().optional(), // Not sent to backend, used for UI
+  regionId: z.string().optional(),
+  districtId: z.string().optional(),
   cityId: z.coerce.number({invalid_type_error: 'Выберите город.'}).min(1, { message: 'Выберите город.' }),
   condition: z.enum(['NEW', 'USED_PERFECT', 'USED_GOOD', 'USED_FAIR'], { required_error: 'Укажите состояние товара.' }),
 });
@@ -51,7 +51,7 @@ const adSchema = z.object({
 type AdFormValues = z.infer<typeof adSchema>;
 
 interface AdFormProps {
-  adId?: number; // For edit mode
+  adId?: number;
 }
 
 const conditionOptions = [
@@ -125,15 +125,16 @@ export default function AdForm({ adId }: AdFormProps) {
             description: adData.description,
             price: adData.price,
             categoryId: adData.categoryId,
-            cityId: adData.cityId, // Region/District will not be pre-filled from cityId alone
+            cityId: adData.cityId, 
             condition: adData.condition,
+            // regionId and districtId are not directly available from adData.cityId without more API calls or complex logic.
+            // User will need to re-select if changing city.
           });
           setExistingImages(adData.images.map(img => ({ id: img.id, url: img.imageUrl })));
           setNewlySelectedImages([]);
           setRemovedExistingImageIds([]);
-          // If adData.cityId exists, we might want to pre-load districts/cities,
-          // but this requires knowing the region/district for that cityId, which API doesn't provide directly.
-          // For now, user has to re-select region/district if they want to change city.
+          // If cityId is present, we could try to pre-fill region/district, but it's complex without a dedicated API endpoint.
+          // For now, we don't auto-populate region/district based on existing cityId.
         } else {
           toast({ variant: "destructive", title: "Ошибка", description: "Объявление не найдено." });
           router.push('/');
@@ -154,8 +155,13 @@ export default function AdForm({ adId }: AdFormProps) {
 
   useEffect(() => {
     if (watchedRegionId) {
-      getDistrictsByRegion(parseInt(watchedRegionId)).then(setDistricts).catch(console.error);
-      form.setValue('districtId', undefined); // Reset district and city when region changes
+      const regionNumId = parseInt(watchedRegionId);
+      if (!isNaN(regionNumId)){
+        getDistrictsByRegion(regionNumId).then(setDistricts).catch(console.error);
+      } else {
+         setDistricts([]);
+      }
+      form.setValue('districtId', undefined); 
       form.setValue('cityId', undefined);
       setCities([]);
     } else {
@@ -166,8 +172,13 @@ export default function AdForm({ adId }: AdFormProps) {
 
   useEffect(() => {
     if (watchedDistrictId) {
-      getCitiesByDistrict(parseInt(watchedDistrictId)).then(setCities).catch(console.error);
-      form.setValue('cityId', undefined); // Reset city when district changes
+      const districtNumId = parseInt(watchedDistrictId);
+      if(!isNaN(districtNumId)) {
+        getCitiesByDistrict(districtNumId).then(setCities).catch(console.error);
+      } else {
+        setCities([]);
+      }
+      form.setValue('cityId', undefined); 
     } else {
       setCities([]);
     }
@@ -180,10 +191,12 @@ export default function AdForm({ adId }: AdFormProps) {
   
   const handleRemoveExistingImage = (id: string | number) => {
     setExistingImages(current => current.filter(img => img.id !== id));
-    setRemovedExistingImageIds(prevIds => {
-      const numericId = Number(id);
-      return prevIds.includes(numericId) ? prevIds : [...prevIds, numericId];
-    });
+    const numericId = Number(id);
+    if (!isNaN(numericId)) {
+        setRemovedExistingImageIds(prevIds => 
+            prevIds.includes(numericId) ? prevIds : [...prevIds, numericId]
+        );
+    }
   };
 
   const onSubmit = async (data: AdFormValues) => {
@@ -347,7 +360,7 @@ export default function AdForm({ adId }: AdFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Город</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value?.toString()} disabled={!watchedDistrictId || cities.length === 0}>
+                    <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value?.toString()} disabled={!watchedDistrictId || cities.length === 0}>
                       <FormControl>
                         <SelectTrigger><SelectValue placeholder="Выберите город" /></SelectTrigger>
                       </FormControl>
@@ -406,4 +419,3 @@ export default function AdForm({ adId }: AdFormProps) {
     </Card>
   );
 }
-

@@ -6,20 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import CategoryTreeSelect from '@/components/shared/CategoryTreeSelect'; // Added
-import type { RegionDto, DistrictDto, CityDto, CategoryTreeDto } from '@/types/api'; // Updated
+import CategoryTreeSelect from '@/components/shared/CategoryTreeSelect';
+import type { RegionDto, DistrictDto, CityDto, CategoryTreeDto } from '@/types/api';
 import { 
   getRegions, 
   getDistrictsByRegion, 
   getCitiesByDistrict, 
-  getCategoriesAsTree // Added
+  getCategoriesAsTree 
 } from '@/lib/mockApi';
 import { Filter, X } from 'lucide-react';
+import LoadingSpinner from '@/components/shared/LoadingSpinner'; // Added import
 
 export interface Filters {
   keyword?: string;
-  regionId?: number; // Added
-  districtId?: number; // Added
+  regionId?: number;
+  districtId?: number;
   cityId?: number;
   categoryId?: number;
   minPrice?: number;
@@ -31,16 +32,16 @@ interface AdFiltersProps {
   initialFilters?: Filters;
 }
 
-const ALL_ITEMS_SENTINEL_VALUE = "ALL_ITEMS_VALUE"; // Still used for locations if a level is not selected
+const ALL_ITEMS_SENTINEL_VALUE = "ALL_ITEMS_VALUE"; 
 
 export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFiltersProps) {
   const [keyword, setKeyword] = useState(initialFilters.keyword || '');
   
-  const [regionId, setRegionId] = useState<string | undefined>(initialFilters.regionId?.toString());
-  const [districtId, setDistrictId] = useState<string | undefined>(initialFilters.districtId?.toString());
-  const [cityId, setCityId] = useState<string | undefined>(initialFilters.cityId?.toString());
+  const [selectedRegionId, setSelectedRegionId] = useState<string | undefined>(initialFilters.regionId?.toString());
+  const [selectedDistrictId, setSelectedDistrictId] = useState<string | undefined>(initialFilters.districtId?.toString());
+  const [selectedCityId, setSelectedCityId] = useState<string | undefined>(initialFilters.cityId?.toString());
   
-  const [categoryId, setCategoryId] = useState<number | undefined>(initialFilters.categoryId);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | undefined>(initialFilters.categoryId);
   
   const [minPrice, setMinPrice] = useState<string>(initialFilters.minPrice?.toString() || '');
   const [maxPrice, setMaxPrice] = useState<string>(initialFilters.maxPrice?.toString() || '');
@@ -63,16 +64,18 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
         setCategoriesTree(categoriesData);
         setRegions(regionsData);
 
-        // Pre-load districts if regionId is present in initialFilters
         if (initialFilters.regionId) {
+            setSelectedRegionId(initialFilters.regionId.toString());
             const districtsData = await getDistrictsByRegion(initialFilters.regionId);
             setDistricts(districtsData);
-            // Pre-load cities if districtId is also present
             if (initialFilters.districtId) {
+                setSelectedDistrictId(initialFilters.districtId.toString());
                 const citiesData = await getCitiesByDistrict(initialFilters.districtId);
                 setCities(citiesData);
+                if(initialFilters.cityId) setSelectedCityId(initialFilters.cityId.toString());
             }
         }
+        if(initialFilters.categoryId) setSelectedCategoryId(initialFilters.categoryId);
 
       } catch (error) {
         console.error("Failed to load filter options:", error);
@@ -81,41 +84,47 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
       }
     };
     fetchDropdownData();
-  }, [initialFilters.regionId, initialFilters.districtId]); // Add dependencies for pre-loading
+  }, []); // Fetch once on mount, initialFilters are stable
 
-  const handleRegionChange = useCallback(async (newRegionId?: string) => {
-    setRegionId(newRegionId);
-    setDistrictId(undefined); // Reset district and city
-    setCityId(undefined);
+  const handleRegionChange = useCallback(async (newRegionIdValue?: string) => {
+    const newRegionId = newRegionIdValue === ALL_ITEMS_SENTINEL_VALUE ? undefined : newRegionIdValue;
+    setSelectedRegionId(newRegionId);
+    setSelectedDistrictId(undefined); 
+    setSelectedCityId(undefined);
     setDistricts([]);
     setCities([]);
-    if (newRegionId && newRegionId !== ALL_ITEMS_SENTINEL_VALUE) {
+    if (newRegionId) {
       try {
         setDistricts(await getDistrictsByRegion(parseInt(newRegionId)));
       } catch (error) { console.error("Failed to load districts:", error); }
     }
   }, []);
 
-  const handleDistrictChange = useCallback(async (newDistrictId?: string) => {
-    setDistrictId(newDistrictId);
-    setCityId(undefined); // Reset city
+  const handleDistrictChange = useCallback(async (newDistrictIdValue?: string) => {
+    const newDistrictId = newDistrictIdValue === ALL_ITEMS_SENTINEL_VALUE ? undefined : newDistrictIdValue;
+    setSelectedDistrictId(newDistrictId);
+    setSelectedCityId(undefined); 
     setCities([]);
-    if (newDistrictId && newDistrictId !== ALL_ITEMS_SENTINEL_VALUE) {
+    if (newDistrictId) {
       try {
         setCities(await getCitiesByDistrict(parseInt(newDistrictId)));
       } catch (error) { console.error("Failed to load cities:", error); }
     }
   }, []);
 
+  const handleCityChange = (newCityIdValue?: string) => {
+    const newCityId = newCityIdValue === ALL_ITEMS_SENTINEL_VALUE ? undefined : newCityIdValue;
+    setSelectedCityId(newCityId);
+  };
 
   const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     onFilterChange({
       keyword: keyword || undefined,
-      regionId: regionId && regionId !== ALL_ITEMS_SENTINEL_VALUE ? parseInt(regionId) : undefined,
-      districtId: districtId && districtId !== ALL_ITEMS_SENTINEL_VALUE ? parseInt(districtId) : undefined,
-      cityId: cityId && cityId !== ALL_ITEMS_SENTINEL_VALUE ? parseInt(cityId) : undefined,
-      categoryId: categoryId,
+      regionId: selectedRegionId ? parseInt(selectedRegionId) : undefined,
+      districtId: selectedDistrictId ? parseInt(selectedDistrictId) : undefined,
+      cityId: selectedCityId ? parseInt(selectedCityId) : undefined,
+      categoryId: selectedCategoryId,
       minPrice: minPrice ? parseFloat(minPrice) : undefined,
       maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
     });
@@ -123,13 +132,13 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
 
   const handleReset = () => {
     setKeyword('');
-    setRegionId(undefined);
-    setDistrictId(undefined);
-    setCityId(undefined);
-    setCategoryId(undefined);
+    setSelectedRegionId(undefined);
+    setSelectedDistrictId(undefined);
+    setSelectedCityId(undefined);
+    setSelectedCategoryId(undefined);
     setMinPrice('');
     setMaxPrice('');
-    setDistricts([]); // Clear dependent dropdowns
+    setDistricts([]); 
     setCities([]);
     onFilterChange({});
   };
@@ -140,7 +149,7 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
         <CardHeader className="pb-4 pt-4">
           <CardTitle className="text-xl flex items-center"><Filter className="mr-2 h-5 w-5" /> Фильтры</CardTitle>
         </CardHeader>
-        <CardContent><LoadingSpinner /></CardContent>
+        <CardContent className="flex justify-center items-center py-10"><LoadingSpinner size={32} /></CardContent>
       </Card>
     );
   }
@@ -167,17 +176,16 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
             <label htmlFor="category" className="block text-sm font-medium text-foreground mb-1">Категория</label>
              <CategoryTreeSelect
                 treeData={categoriesTree}
-                value={categoryId}
-                onChange={(id) => setCategoryId(id)}
+                value={selectedCategoryId}
+                onChange={(id) => setSelectedCategoryId(id)}
                 placeholder="Все категории"
               />
           </div>
           
-          {/* Location selectors */}
           <div>
             <label htmlFor="region" className="block text-sm font-medium text-foreground mb-1">Область</label>
             <Select
-              value={regionId === undefined ? ALL_ITEMS_SENTINEL_VALUE : regionId}
+              value={selectedRegionId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedRegionId}
               onValueChange={handleRegionChange}
             >
               <SelectTrigger id="region"><SelectValue placeholder="Все области" /></SelectTrigger>
@@ -190,9 +198,9 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
           <div>
             <label htmlFor="district" className="block text-sm font-medium text-foreground mb-1">Район</label>
             <Select
-              value={districtId === undefined ? ALL_ITEMS_SENTINEL_VALUE : districtId}
+              value={selectedDistrictId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedDistrictId}
               onValueChange={handleDistrictChange}
-              disabled={!regionId || regionId === ALL_ITEMS_SENTINEL_VALUE || districts.length === 0}
+              disabled={!selectedRegionId || districts.length === 0}
             >
               <SelectTrigger id="district"><SelectValue placeholder="Все районы" /></SelectTrigger>
               <SelectContent>
@@ -204,9 +212,9 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
           <div>
             <label htmlFor="city" className="block text-sm font-medium text-foreground mb-1">Город</label>
             <Select
-              value={cityId === undefined ? ALL_ITEMS_SENTINEL_VALUE : cityId}
-              onValueChange={(value) => setCityId(value === ALL_ITEMS_SENTINEL_VALUE ? undefined : value)}
-              disabled={!districtId || districtId === ALL_ITEMS_SENTINEL_VALUE || cities.length === 0}
+              value={selectedCityId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedCityId}
+              onValueChange={handleCityChange}
+              disabled={!selectedDistrictId || cities.length === 0}
             >
               <SelectTrigger id="city"><SelectValue placeholder="Все города" /></SelectTrigger>
               <SelectContent>
@@ -215,7 +223,6 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
               </SelectContent>
             </Select>
           </div>
-          {/* End Location selectors */}
 
           <div className="grid grid-cols-2 gap-2 items-end">
             <div>
@@ -242,4 +249,3 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
     </Card>
   );
 }
-

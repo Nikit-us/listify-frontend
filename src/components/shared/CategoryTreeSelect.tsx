@@ -51,8 +51,8 @@ const RenderCategoryNode: React.FC<{
     onSelect(category);
   };
 
-  const basePaddingClass = 'px-2'; // Base padding for all items
-  const indentationClass = level === 0 ? '' : `pl-${(level * 2) + 2}`; // e.g. pl-4, pl-6, pl-8 for level 1, 2, 3
+  const basePaddingClass = 'px-2'; 
+  const indentationClass = level === 0 ? '' : `pl-${(level * 2) + 2}`; 
 
   if (hasChildren) {
     return (
@@ -60,20 +60,39 @@ const RenderCategoryNode: React.FC<{
         <div className="flex items-center w-full">
           <AccordionTrigger
             className={cn(
-              "flex-1 py-2 text-sm hover:bg-accent rounded-md data-[state=open]:bg-accent/50",
+              "flex-1 py-2 text-sm hover:bg-accent rounded-md data-[state=open]:bg-accent/50 text-left",
               basePaddingClass,
               indentationClass,
-              isSelected && !hasChildren && "bg-accent font-semibold" // Only highlight if selected and not a parent being expanded
+              // Do not highlight parent if it's just for expanding
             )}
           >
-            <div className="flex items-center justify-between w-full" onClick={handleCategoryClick}>
+            {/* Wrap the clickable part if you want clicks on name to also select */}
+            <div className="flex items-center justify-between w-full" onClick={(e) => {
+                // Allow accordion to toggle, but also select if clicked directly
+                // handleCategoryClick(e); 
+                // Decided against this to avoid confusion: click name to select, chevron to expand.
+                // User can click the name in the accordion content for selection.
+            }}>
               <span className="truncate">{category.name}</span>
               {/* Chevron is part of AccordionTrigger */}
             </div>
           </AccordionTrigger>
         </div>
         <AccordionContent className="pb-0">
-          <div className={cn("space-y-0.5")}> {/* Removed pl from here */}
+          <div className={cn("space-y-0.5")}>
+             {/* Allow selecting parent category from content area */}
+             <div
+                onClick={handleCategoryClick}
+                className={cn(
+                  "flex items-center justify-between py-2 text-sm cursor-pointer hover:bg-accent rounded-md",
+                  basePaddingClass, 
+                  `pl-${((level +1) * 2)}`, // Indent parent name similar to children for selection
+                  isSelected && "bg-accent font-semibold"
+                )}
+              >
+                <span className="truncate font-medium">{category.name} (выбрать)</span>
+                {isSelected && <Check className="h-4 w-4 ml-2 text-primary shrink-0" />}
+              </div>
             {category.children?.map((child) => (
               <RenderCategoryNode
                 key={child.id}
@@ -89,6 +108,7 @@ const RenderCategoryNode: React.FC<{
     );
   }
 
+  // Leaf node or parent selected directly from its "select parent" entry
   return (
     <div
       onClick={handleCategoryClick}
@@ -134,7 +154,6 @@ export default function CategoryTreeSelect({
     e.stopPropagation();
     onChange(undefined, undefined);
     setSelectedCategoryName(undefined);
-    // setIsOpen(false); // User might want to select another one
   };
 
 
