@@ -37,7 +37,6 @@ if (apiHostname) {
 
 
 const nextConfig: NextConfig = {
-  output: 'export', // Added for static export
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -45,7 +44,6 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    unoptimized: true, // Added for static export, disables Next.js image optimization
     remotePatterns: remotePatternsConfig,
   },
 };
