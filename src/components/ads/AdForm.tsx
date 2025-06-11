@@ -1,21 +1,37 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
 import ImageUpload from '@/components/shared/ImageUpload';
-import { createAd, updateAd, getCategories, getCities, getAdById } from '@/lib/mockApi';
-import type { AdvertisementCreateDto, AdvertisementUpdateDto, CategoryDto, CityDto, AdvertisementDetailDto, ImageDto } from '@/types/api';
+import CategoryTreeSelect from '@/components/shared/CategoryTreeSelect';
+import { 
+  createAd, 
+  updateAd, 
+  getCategoriesAsTree, // Updated
+  getRegions,
+  getDistrictsByRegion,
+  getCitiesByDistrict,
+  getAdById 
+} from '@/lib/mockApi';
+import type { 
+  AdvertisementCreateDto, 
+  AdvertisementUpdateDto, 
+  CategoryTreeDto, // Updated
+  RegionDto,
+  DistrictDto,
+  CityDto, 
+  AdvertisementDetailDto, 
+} from '@/types/api';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -25,8 +41,10 @@ const adSchema = z.object({
   title: z.string().min(5, { message: 'Заголовок должен быть не менее 5 символов.' }).max(50, { message: 'Заголовок не должен превышать 50 символов.' }),
   description: z.string().min(20, { message: 'Описание должно быть не менее 20 символов.' }).max(5000, { message: 'Описание не должно превышать 5000 символов.' }),
   price: z.coerce.number().min(0, { message: 'Цена не может быть отрицательной.' }),
-  categoryId: z.string().min(1, { message: 'Выберите категорию.' }),
-  cityId: z.string().min(1, { message: 'Выберите город.' }),
+  categoryId: z.coerce.number({invalid_type_error: 'Выберите категорию.'}).min(1, { message: 'Выберите категорию.' }),
+  regionId: z.string().optional(), // Not sent to backend, used for UI
+  districtId: z.string().optional(), // Not sent to backend, used for UI
+  cityId: z.coerce.number({invalid_type_error: 'Выберите город.'}).min(1, { message: 'Выберите город.' }),
   condition: z.enum(['NEW', 'USED_PERFECT', 'USED_GOOD', 'USED_FAIR'], { required_error: 'Укажите состояние товара.' }),
 });
 
@@ -45,13 +63,16 @@ const conditionOptions = [
 
 export default function AdForm({ adId }: AdFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
   
-  const [newlySelectedImages, setNewlySelectedImages] = useState<File[]>([]); // Files for new uploads
-  const [existingImages, setExistingImages] = useState<{ id: string | number; url: string }[]>([]); // For UI display of current images
-  const [removedExistingImageIds, setRemovedExistingImageIds] = useState<number[]>([]); // IDs of existing images marked for removal
+  const [newlySelectedImages, setNewlySelectedImages] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<{ id: string | number; url: string }[]>([]);
+  const [removedExistingImageIds, setRemovedExistingImageIds] = useState<number[]>([]);
 
-  const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [categoriesTree, setCategoriesTree] = useState<CategoryTreeDto[]>([]);
+  const [regions, setRegions] = useState<RegionDto[]>([]);
+  const [districts, setDistricts] = useState<DistrictDto[]>([]);
   const [cities, setCities] = useState<CityDto[]>([]);
   
   const router = useRouter();
@@ -64,11 +85,16 @@ export default function AdForm({ adId }: AdFormProps) {
       title: '',
       description: '',
       price: 0,
-      categoryId: '',
-      cityId: '',
+      categoryId: undefined,
+      regionId: undefined,
+      districtId: undefined,
+      cityId: undefined,
       condition: undefined,
     },
   });
+
+  const watchedRegionId = form.watch('regionId');
+  const watchedDistrictId = form.watch('districtId');
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -76,53 +102,77 @@ export default function AdForm({ adId }: AdFormProps) {
     }
   }, [authLoading, isAuthenticated, router, adId]);
 
+  const fetchFormData = useCallback(async () => {
+    setIsDataLoading(true);
+    try {
+      const [categoriesData, regionsData] = await Promise.all([
+        getCategoriesAsTree(),
+        getRegions(),
+      ]);
+      setCategoriesTree(categoriesData);
+      setRegions(regionsData);
 
-  useEffect(() => {
-    const fetchDropdownData = async () => {
-      try {
-        const [categoriesData, citiesData] = await Promise.all([
-          getCategories(),
-          getCities(),
-        ]);
-        setCategories(categoriesData);
-        setCities(citiesData);
-      } catch (err) {
-        console.error("Failed to load form options:", err);
-        toast({ variant: "destructive", title: "Ошибка", description: "Не удалось загрузить опции для формы." });
-      }
-    };
-    fetchDropdownData();
-
-    if (adId) {
-      setIsLoading(true);
-      getAdById(adId).then(adData => {
+      if (adId) {
+        const adData = await getAdById(adId);
         if (adData) {
-          if(user && adData.sellerId !== user.id) { 
-             toast({ variant: "destructive", title: "Ошибка доступа", description: "Вы не можете редактировать это объявление." });
-             router.push(`/ads/${adId}`);
-             return;
+          if (user && adData.sellerId !== user.id) {
+            toast({ variant: "destructive", title: "Ошибка доступа", description: "Вы не можете редактировать это объявление." });
+            router.push(`/ads/${adId}`);
+            return;
           }
           form.reset({
             title: adData.title,
             description: adData.description,
             price: adData.price,
-            categoryId: adData.categoryId.toString(),
-            cityId: adData.cityId.toString(),
+            categoryId: adData.categoryId,
+            cityId: adData.cityId, // Region/District will not be pre-filled from cityId alone
             condition: adData.condition,
           });
           setExistingImages(adData.images.map(img => ({ id: img.id, url: img.imageUrl })));
-          setNewlySelectedImages([]); // Clear any new images if re-loading
-          setRemovedExistingImageIds([]); // Clear removed IDs if re-loading
+          setNewlySelectedImages([]);
+          setRemovedExistingImageIds([]);
+          // If adData.cityId exists, we might want to pre-load districts/cities,
+          // but this requires knowing the region/district for that cityId, which API doesn't provide directly.
+          // For now, user has to re-select region/district if they want to change city.
         } else {
           toast({ variant: "destructive", title: "Ошибка", description: "Объявление не найдено." });
           router.push('/');
         }
-      }).catch(err => {
-        console.error("Failed to load ad for editing:", err);
-        toast({ variant: "destructive", title: "Ошибка", description: "Не удалось загрузить объявление для редактирования." });
-      }).finally(() => setIsLoading(false));
+      }
+    } catch (err) {
+      console.error("Failed to load form options or ad data:", err);
+      toast({ variant: "destructive", title: "Ошибка загрузки", description: "Не удалось загрузить данные для формы." });
+    } finally {
+      setIsDataLoading(false);
     }
   }, [adId, form, router, toast, user]);
+
+  useEffect(() => {
+    fetchFormData();
+  }, [fetchFormData]);
+
+
+  useEffect(() => {
+    if (watchedRegionId) {
+      getDistrictsByRegion(parseInt(watchedRegionId)).then(setDistricts).catch(console.error);
+      form.setValue('districtId', undefined); // Reset district and city when region changes
+      form.setValue('cityId', undefined);
+      setCities([]);
+    } else {
+      setDistricts([]);
+      setCities([]);
+    }
+  }, [watchedRegionId, form]);
+
+  useEffect(() => {
+    if (watchedDistrictId) {
+      getCitiesByDistrict(parseInt(watchedDistrictId)).then(setCities).catch(console.error);
+      form.setValue('cityId', undefined); // Reset city when district changes
+    } else {
+      setCities([]);
+    }
+  }, [watchedDistrictId, form]);
+
 
   const handleNewImagesChange = (files: File[]) => {
     setNewlySelectedImages(files);
@@ -130,14 +180,9 @@ export default function AdForm({ adId }: AdFormProps) {
   
   const handleRemoveExistingImage = (id: string | number) => {
     setExistingImages(current => current.filter(img => img.id !== id));
-    // Only add to removedExistingImageIds if it's not already there
-    // (though ImageUpload usually calls this once per removal)
     setRemovedExistingImageIds(prevIds => {
       const numericId = Number(id);
-      if (!prevIds.includes(numericId)) {
-        return [...prevIds, numericId];
-      }
-      return prevIds;
+      return prevIds.includes(numericId) ? prevIds : [...prevIds, numericId];
     });
   };
 
@@ -151,31 +196,24 @@ export default function AdForm({ adId }: AdFormProps) {
     
     try {
       let savedAd: AdvertisementDetailDto;
+      const basePayload = {
+        title: data.title,
+        description: data.description,
+        price: Number(data.price),
+        categoryId: Number(data.categoryId),
+        cityId: Number(data.cityId),
+        condition: data.condition,
+      };
+
       if (adId) {
         const updatePayload: AdvertisementUpdateDto = {
-            title: data.title,
-            description: data.description,
-            price: Number(data.price),
-            categoryId: parseInt(data.categoryId),
-            cityId: parseInt(data.cityId),
-            condition: data.condition,
+            ...basePayload,
+            imageIdsToDelete: removedExistingImageIds.length > 0 ? removedExistingImageIds : undefined,
         };
-        if (removedExistingImageIds.length > 0) {
-          updatePayload.removedImageIds = [...removedExistingImageIds];
-        }
-        
-        // Pass only newly selected images for upload
         savedAd = await updateAd(adId, updatePayload, newlySelectedImages.length > 0 ? newlySelectedImages : undefined, token);
         toast({ title: "Успех!", description: "Объявление успешно обновлено." });
       } else {
-        const createPayload: AdvertisementCreateDto = {
-          title: data.title,
-          description: data.description,
-          price: Number(data.price),
-          categoryId: parseInt(data.categoryId),
-          cityId: parseInt(data.cityId),
-          condition: data.condition,
-        };
+        const createPayload: AdvertisementCreateDto = basePayload;
         savedAd = await createAd(createPayload, newlySelectedImages.length > 0 ? newlySelectedImages : undefined, token);
         toast({ title: "Успех!", description: "Объявление успешно создано." });
       }
@@ -188,7 +226,7 @@ export default function AdForm({ adId }: AdFormProps) {
     }
   };
   
-  if (authLoading || (isLoading && !adId)) { 
+  if (authLoading || isDataLoading) { 
     return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><LoadingSpinner size={48} /></div>;
   }
 
@@ -243,52 +281,88 @@ export default function AdForm({ adId }: AdFormProps) {
                 </FormItem>
               )}
             />
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="categoryId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Категория</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Выберите категорию" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {categories.map(cat => (
-                            <SelectItem key={cat.id} value={cat.id.toString()}>{cat.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="cityId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Город</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Выберите город" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {cities.map(city => (
-                            <SelectItem key={city.id} value={city.id.toString()}>{city.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <FormField
+              control={form.control}
+              name="categoryId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Категория</FormLabel>
+                  <FormControl>
+                     <CategoryTreeSelect
+                        treeData={categoriesTree}
+                        value={field.value}
+                        onChange={(categoryId) => field.onChange(categoryId)}
+                        placeholder="Выберите категорию"
+                      />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="regionId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Область</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Выберите область" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {regions.map(region => (
+                          <SelectItem key={region.id} value={region.id.toString()}>{region.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="districtId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Район</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!watchedRegionId || districts.length === 0}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Выберите район" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {districts.map(district => (
+                          <SelectItem key={district.id} value={district.id.toString()}>{district.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="cityId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Город</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value?.toString()} disabled={!watchedDistrictId || cities.length === 0}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Выберите город" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {cities.map(city => (
+                          <SelectItem key={city.id} value={city.id.toString()}>{city.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
+
             <FormField
               control={form.control}
               name="condition"
@@ -297,9 +371,7 @@ export default function AdForm({ adId }: AdFormProps) {
                   <FormLabel>Состояние</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите состояние товара" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Выберите состояние товара" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {conditionOptions.map(opt => (
@@ -317,15 +389,15 @@ export default function AdForm({ adId }: AdFormProps) {
                   onFilesChange={handleNewImagesChange} 
                   maxFiles={5} 
                   label="" 
-                  existingImageUrls={existingImages} // Pass current existing images for display
-                  onRemoveExistingImage={handleRemoveExistingImage} // Callback to manage removal
+                  existingImageUrls={existingImages}
+                  onRemoveExistingImage={handleRemoveExistingImage}
                   aspectRatio="aspect-square"
                 />
             </FormItem>
 
             {formError && <p className="text-sm font-medium text-destructive">{formError}</p>}
-            <Button type="submit" className="w-full" disabled={isLoading || authLoading}>
-              {(isLoading || authLoading) ? <LoadingSpinner className="mr-2" /> : null}
+            <Button type="submit" className="w-full" disabled={isLoading || authLoading || isDataLoading}>
+              {(isLoading || authLoading || isDataLoading) ? <LoadingSpinner className="mr-2" /> : null}
               {adId ? 'Сохранить изменения' : 'Опубликовать объявление'}
             </Button>
           </form>
@@ -334,3 +406,4 @@ export default function AdForm({ adId }: AdFormProps) {
     </Card>
   );
 }
+
