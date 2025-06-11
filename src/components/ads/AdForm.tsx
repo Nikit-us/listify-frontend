@@ -46,8 +46,10 @@ const conditionOptions = [
 export default function AdForm({ adId }: AdFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [images, setImages] = useState<File[]>([]);
-  const [existingImages, setExistingImages] = useState<{ id: string | number; url: string }[]>([]);
+  
+  const [newlySelectedImages, setNewlySelectedImages] = useState<File[]>([]); // Files for new uploads
+  const [existingImages, setExistingImages] = useState<{ id: string | number; url: string }[]>([]); // For UI display of current images
+  const [removedExistingImageIds, setRemovedExistingImageIds] = useState<number[]>([]); // IDs of existing images marked for removal
 
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [cities, setCities] = useState<CityDto[]>([]);
@@ -109,6 +111,8 @@ export default function AdForm({ adId }: AdFormProps) {
             condition: adData.condition,
           });
           setExistingImages(adData.images.map(img => ({ id: img.id, url: img.imageUrl })));
+          setNewlySelectedImages([]); // Clear any new images if re-loading
+          setRemovedExistingImageIds([]); // Clear removed IDs if re-loading
         } else {
           toast({ variant: "destructive", title: "Ошибка", description: "Объявление не найдено." });
           router.push('/');
@@ -120,13 +124,21 @@ export default function AdForm({ adId }: AdFormProps) {
     }
   }, [adId, form, router, toast, user]);
 
-  const handleImagesChange = (files: File[]) => {
-    setImages(files);
+  const handleNewImagesChange = (files: File[]) => {
+    setNewlySelectedImages(files);
   };
   
   const handleRemoveExistingImage = (id: string | number) => {
     setExistingImages(current => current.filter(img => img.id !== id));
-    // Here you might want to track removed existing images to send to backend if API supports partial image updates
+    // Only add to removedExistingImageIds if it's not already there
+    // (though ImageUpload usually calls this once per removal)
+    setRemovedExistingImageIds(prevIds => {
+      const numericId = Number(id);
+      if (!prevIds.includes(numericId)) {
+        return [...prevIds, numericId];
+      }
+      return prevIds;
+    });
   };
 
   const onSubmit = async (data: AdFormValues) => {
@@ -137,17 +149,9 @@ export default function AdForm({ adId }: AdFormProps) {
     setIsLoading(true);
     setFormError(null);
     
-    const adPayloadBase = { 
-      ...data,
-      price: Number(data.price),
-      categoryId: parseInt(data.categoryId),
-      cityId: parseInt(data.cityId),
-    };
-
     try {
       let savedAd: AdvertisementDetailDto;
       if (adId) {
-        // For update, construct AdvertisementUpdateDto
         const updatePayload: AdvertisementUpdateDto = {
             title: data.title,
             description: data.description,
@@ -155,27 +159,15 @@ export default function AdForm({ adId }: AdFormProps) {
             categoryId: parseInt(data.categoryId),
             cityId: parseInt(data.cityId),
             condition: data.condition,
-            // status could be part of a more complex form if needed
         };
-        // Only send images if they have changed or if explicitly managing them (e.g., removing all)
-        // The API spec says "If provided, replaces all existing images. If an empty list is sent, all images are removed. If the part is omitted entirely, images are not changed."
-        // Current ImageUpload sends new files. If existing images are removed, `images` might be empty.
-        // This logic needs to be precise based on how you want to handle "omitted" vs "empty list".
-        // For simplicity, if new images are added, we send them. If all images are removed (new and existing), we'd send an empty array.
-        // This mockAPI version sends 'images' if new images exist, or if 'images' is explicitly set to an empty array to clear.
-        // For a real API, you might need to track `removedImageIds` if the API supports partial updates.
-        
-        let imagesToSend: File[] | undefined = undefined;
-        if (images.length > 0 || (images.length === 0 && existingImages.length === 0 && form.formState.dirtyFields.title /* or other way to detect intent to clear */)) {
-          // If new images are present, or if all images (new and existing) are gone AND the form was touched (implying intent to clear)
-          imagesToSend = images;
+        if (removedExistingImageIds.length > 0) {
+          updatePayload.removedImageIds = [...removedExistingImageIds];
         }
-
-
-        savedAd = await updateAd(adId, updatePayload, imagesToSend, token);
+        
+        // Pass only newly selected images for upload
+        savedAd = await updateAd(adId, updatePayload, newlySelectedImages.length > 0 ? newlySelectedImages : undefined, token);
         toast({ title: "Успех!", description: "Объявление успешно обновлено." });
       } else {
-        // For create, construct AdvertisementCreateDto
         const createPayload: AdvertisementCreateDto = {
           title: data.title,
           description: data.description,
@@ -184,7 +176,7 @@ export default function AdForm({ adId }: AdFormProps) {
           cityId: parseInt(data.cityId),
           condition: data.condition,
         };
-        savedAd = await createAd(createPayload, images, token);
+        savedAd = await createAd(createPayload, newlySelectedImages.length > 0 ? newlySelectedImages : undefined, token);
         toast({ title: "Успех!", description: "Объявление успешно создано." });
       }
       router.push(`/ads/${savedAd.id}`);
@@ -322,11 +314,11 @@ export default function AdForm({ adId }: AdFormProps) {
             <FormItem>
               <FormLabel>Изображения (до 5)</FormLabel>
                <ImageUpload 
-                  onFilesChange={handleImagesChange} 
+                  onFilesChange={handleNewImagesChange} 
                   maxFiles={5} 
                   label="" 
-                  existingImageUrls={existingImages.map(img => ({id: img.id, url: img.url}))}
-                  onRemoveExistingImage={handleRemoveExistingImage}
+                  existingImageUrls={existingImages} // Pass current existing images for display
+                  onRemoveExistingImage={handleRemoveExistingImage} // Callback to manage removal
                   aspectRatio="aspect-square"
                 />
             </FormItem>

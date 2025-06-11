@@ -97,7 +97,13 @@ export interface AdvertisementCreateDto {
   condition: "NEW" | "USED_PERFECT" | "USED_GOOD" | "USED_FAIR";
 }
 
-export type AdvertisementUpdateDto = Partial<Omit<AdvertisementCreateDto, 'categoryId' | 'cityId'> & { status?: "ACTIVE" | "INACTIVE" | "SOLD", categoryId?: number, cityId?: number }>;
+// Updated AdvertisementUpdateDto to include removedImageIds
+export type AdvertisementUpdateDto = Partial<Omit<AdvertisementCreateDto, 'categoryId' | 'cityId'> & { 
+  status?: "ACTIVE" | "INACTIVE" | "SOLD", 
+  categoryId?: number, 
+  cityId?: number,
+  removedImageIds?: number[] // IDs of existing images to be removed
+}>;
 
 
 export interface UserProfileDto extends UserResponseDto {
