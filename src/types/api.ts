@@ -73,8 +73,8 @@ export interface UserRegistrationDto {
   fullName: string;
   email: string;
   password: string;
-  phoneNumber?: string; // Optional as per OpenAPI example for UserUpdateProfileDto which is similar
-  cityId: number; // Required as per OpenAPI
+  phoneNumber?: string;
+  cityId: number;
 }
 
 export interface UserResponseDto {
@@ -84,8 +84,8 @@ export interface UserResponseDto {
   phoneNumber?: string;
   registeredAt: string; // ISO date string
   avatarUrl?: string;
-  cityId?: number;
-  cityName?: string;
+  cityId?: number; // Optional in UserResponseDto as per UserProfileDto which it aligns with
+  cityName?: string; // Optional
 }
 
 export interface AdvertisementCreateDto {
@@ -97,14 +97,12 @@ export interface AdvertisementCreateDto {
   condition: "NEW" | "USED_PERFECT" | "USED_GOOD" | "USED_FAIR";
 }
 
-// Updated AdvertisementUpdateDto to include removedImageIds
-export type AdvertisementUpdateDto = Partial<Omit<AdvertisementCreateDto, 'categoryId' | 'cityId'> & { 
-  status?: "ACTIVE" | "INACTIVE" | "SOLD", 
-  categoryId?: number, 
-  cityId?: number,
-  removedImageIds?: number[] // IDs of existing images to be removed
-}>;
-
+export type AdvertisementUpdateDto = Partial<Omit<AdvertisementCreateDto, 'categoryId' | 'cityId'>> & {
+  status?: "ACTIVE" | "INACTIVE" | "SOLD";
+  categoryId?: number;
+  cityId?: number;
+  imageIdsToDelete?: number[]; // Corrected: from previous interaction
+};
 
 export interface UserProfileDto extends UserResponseDto {
   totalActiveAdvertisements: number;
@@ -116,28 +114,30 @@ export interface UserUpdateProfileDto {
   cityId?: number;
 }
 
+export interface RegionDto {
+  id: number;
+  name: string;
+}
+
+export interface DistrictDto {
+  id: number;
+  name: string;
+}
+
 export interface CityDto {
   id: number;
   name: string;
 }
 
-export interface CategoryDto {
+export interface CategoryDto { // Flat category structure
   id: number;
   name: string;
-  // parentCategoryId removed to match GET /api/categories response in OpenAPI spec
 }
 
-export interface AdvertisementSearchCriteriaDto {
-  keyword?: string;
-  categoryId?: number;
-  cityId?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  condition?: "NEW" | "USED_PERFECT" | "USED_GOOD" | "USED_FAIR";
-  sellerId?: number;
-  page?: number;
-  size?: number;
-  sort?: string;
+export interface CategoryTreeDto { // Hierarchical category structure
+  id: number;
+  name: string;
+  children: CategoryTreeDto[]; // Assuming children is an array of CategoryTreeDto
 }
 
 export interface CategoryCreateDto {
@@ -145,6 +145,22 @@ export interface CategoryCreateDto {
   parentCategoryId?: number;
 }
 
-export interface CityCreateDto {
-  name: string;
+// CityCreateDto is not explicitly in the spec but might be used by admin if there's a POST /api/cities
+// export interface CityCreateDto {
+//   name: string;
+// }
+
+export interface AdvertisementSearchCriteriaDto {
+  keyword?: string;
+  categoryId?: number;
+  cityId?: number; // For filters, user might select city directly if hierarchy not fully implemented or desired in filters
+  regionId?: number; // For filtering by region
+  districtId?: number; // For filtering by district
+  minPrice?: number;
+  maxPrice?: number;
+  condition?: "NEW" | "USED_PERFECT" | "USED_GOOD" | "USED_FAIR";
+  sellerId?: number;
+  page?: number;
+  size?: number;
+  sort?: string;
 }
