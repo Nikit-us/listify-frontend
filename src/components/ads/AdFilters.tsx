@@ -8,11 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import CategoryTreeSelect from '@/components/shared/CategoryTreeSelect';
 import type { RegionDto, DistrictDto, CityDto, CategoryTreeDto } from '@/types/api';
-import { 
-  getRegions, 
-  getDistrictsByRegion, 
-  getCitiesByDistrict, 
-  getCategoriesAsTree 
+import {
+  getRegions,
+  getDistrictsByRegion,
+  getCitiesByDistrict,
+  getCategoriesAsTree
 } from '@/lib/mockApi';
 import { Filter, X } from 'lucide-react';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -32,17 +32,17 @@ interface AdFiltersProps {
   initialFilters?: Filters;
 }
 
-const ALL_ITEMS_SENTINEL_VALUE = "ALL_ITEMS_VALUE"; 
+const ALL_ITEMS_SENTINEL_VALUE = "ALL_ITEMS_VALUE";
 
 export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFiltersProps) {
   const [keyword, setKeyword] = useState(initialFilters.keyword || '');
-  
+
   const [selectedRegionId, setSelectedRegionId] = useState<string | undefined>(initialFilters.regionId?.toString());
   const [selectedDistrictId, setSelectedDistrictId] = useState<string | undefined>(initialFilters.districtId?.toString());
   const [selectedCityId, setSelectedCityId] = useState<string | undefined>(initialFilters.cityId?.toString());
-  
+
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | undefined>(initialFilters.categoryId);
-  
+
   const [minPrice, setMinPrice] = useState<string>(initialFilters.minPrice?.toString() || '');
   const [maxPrice, setMaxPrice] = useState<string>(initialFilters.maxPrice?.toString() || '');
 
@@ -50,10 +50,12 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
   const [regions, setRegions] = useState<RegionDto[]>([]);
   const [districts, setDistricts] = useState<DistrictDto[]>([]);
   const [cities, setCities] = useState<CityDto[]>([]);
-  
-  const [isDataLoading, setIsDataLoading] = useState(true);
 
-  // Effect to synchronize internal state with initialFilters prop
+  const [isLocationDataLoading, setIsLocationDataLoading] = useState(false); // For location dropdowns specifically
+  const [isCategoryDataLoading, setIsCategoryDataLoading] = useState(true); // For categories specifically
+  const [isBaseDataLoading, setIsBaseDataLoading] = useState(true); // For overall initial data (regions, categories)
+
+
   useEffect(() => {
     setKeyword(initialFilters.keyword || '');
     setSelectedRegionId(initialFilters.regionId?.toString());
@@ -64,80 +66,82 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
     setMaxPrice(initialFilters.maxPrice?.toString() || '');
   }, [initialFilters]);
 
-  // Effect to fetch dropdown data and pre-fill based on (potentially updated) initialFilters
+
   useEffect(() => {
-    const fetchDropdownData = async () => {
-      setIsDataLoading(true);
+    const fetchInitialData = async () => {
+      setIsBaseDataLoading(true);
+      setIsCategoryDataLoading(true);
+      setIsLocationDataLoading(true); // Start with true for all location parts
+
       try {
         const [categoriesData, regionsData] = await Promise.all([
-          getCategoriesAsTree(),
-          getRegions(),
+          getCategoriesAsTree().finally(() => setIsCategoryDataLoading(false)),
+          getRegions()
         ]);
         setCategoriesTree(categoriesData);
         setRegions(regionsData);
 
-        const currentRegionId = initialFilters.regionId;
-        const currentDistrictId = initialFilters.districtId;
+        // Pre-fill districts if region is in initialFilters
+        if (initialFilters.regionId) {
+          const regionIdStr = initialFilters.regionId.toString();
+          const districtsData = await getDistrictsByRegion(parseInt(regionIdStr));
+          setDistricts(districtsData);
 
-        if (currentRegionId) {
-            const regionIdStr = currentRegionId.toString();
-            const districtsData = await getDistrictsByRegion(parseInt(regionIdStr));
-            setDistricts(districtsData);
-            
-            if (currentDistrictId) {
-                const districtIdStr = currentDistrictId.toString();
-                const districtExistsInFetched = districtsData.some(d => d.id.toString() === districtIdStr);
-                if (districtExistsInFetched) {
-                    const citiesData = await getCitiesByDistrict(parseInt(districtIdStr));
-                    setCities(citiesData);
-                } else {
-                    // District from initialFilters might not belong to the initialRegion, clear it
-                    setSelectedDistrictId(undefined);
-                    setSelectedCityId(undefined);
-                    setCities([]);
-                }
+          // Pre-fill cities if district is also in initialFilters and belongs to the selected region
+          if (initialFilters.districtId) {
+            const districtIdStr = initialFilters.districtId.toString();
+            const districtExistsInFetched = districtsData.some(d => d.id.toString() === districtIdStr);
+            if (districtExistsInFetched) {
+              const citiesData = await getCitiesByDistrict(parseInt(districtIdStr));
+              setCities(citiesData);
             } else {
-                // No district in initialFilters, clear cities
-                setSelectedCityId(undefined);
-                setCities([]);
+              // District from initialFilters might not belong to the initialRegion, clear it
+              setSelectedDistrictId(undefined);
+              setSelectedCityId(undefined);
+              setCities([]);
             }
-        } else {
-            // No region in initialFilters, clear districts and cities
-            setSelectedDistrictId(undefined);
+          } else {
             setSelectedCityId(undefined);
-            setDistricts([]);
             setCities([]);
+          }
+        } else {
+          // No region in initialFilters, clear districts and cities
+          setSelectedDistrictId(undefined);
+          setSelectedCityId(undefined);
+          setDistricts([]);
+          setCities([]);
         }
       } catch (error) {
         console.error("Failed to load filter options:", error);
-        // Reset to a known safe state if loading fails
         setCategoriesTree([]);
         setRegions([]);
         setDistricts([]);
         setCities([]);
       } finally {
-        setIsDataLoading(false);
+        setIsLocationDataLoading(false); // All location fetching attempts (initial) are done
+        setIsBaseDataLoading(false);
       }
     };
-    fetchDropdownData();
-  }, [initialFilters]); // Re-run if initialFilters prop changes
+    fetchInitialData();
+  }, [initialFilters]);
+
 
   const handleRegionChange = useCallback(async (newRegionIdValue?: string) => {
     const newRegionId = newRegionIdValue === ALL_ITEMS_SENTINEL_VALUE ? undefined : newRegionIdValue;
     setSelectedRegionId(newRegionId);
-    setSelectedDistrictId(undefined); 
+    setSelectedDistrictId(undefined);
     setSelectedCityId(undefined);
     setDistricts([]);
     setCities([]);
     if (newRegionId) {
-      setIsDataLoading(true);
+      setIsLocationDataLoading(true);
       try {
         setDistricts(await getDistrictsByRegion(parseInt(newRegionId)));
-      } catch (error) { 
-        console.error("Failed to load districts:", error); 
+      } catch (error) {
+        console.error("Failed to load districts:", error);
         setDistricts([]);
       } finally {
-        setIsDataLoading(false);
+        setIsLocationDataLoading(false);
       }
     }
   }, []);
@@ -145,17 +149,17 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
   const handleDistrictChange = useCallback(async (newDistrictIdValue?: string) => {
     const newDistrictId = newDistrictIdValue === ALL_ITEMS_SENTINEL_VALUE ? undefined : newDistrictIdValue;
     setSelectedDistrictId(newDistrictId);
-    setSelectedCityId(undefined); 
+    setSelectedCityId(undefined);
     setCities([]);
     if (newDistrictId) {
-      setIsDataLoading(true);
+      setIsLocationDataLoading(true);
       try {
         setCities(await getCitiesByDistrict(parseInt(newDistrictId)));
-      } catch (error) { 
+      } catch (error) {
         console.error("Failed to load cities:", error);
         setCities([]);
       } finally {
-        setIsDataLoading(false);
+        setIsLocationDataLoading(false);
       }
     }
   }, []);
@@ -179,15 +183,10 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
   };
 
   const handleReset = () => {
-    // This will trigger the first useEffect to reset internal states
-    // and the second useEffect to refetch initial data (regions, categories)
-    // and clear dependent dropdowns.
-    onFilterChange({}); 
+    onFilterChange({});
   };
 
-  // Display loading spinner only if essential base data (regions, categories) hasn't loaded yet.
-  // Dependent data (districts, cities) loading is handled by disabling selects.
-  if (isDataLoading && regions.length === 0 && categoriesTree.length === 0) {
+  if (isBaseDataLoading) {
     return (
       <Card className="mb-8 shadow-sm">
         <CardHeader className="pb-4 pt-4">
@@ -199,7 +198,7 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
   }
 
   return (
-    <Card className="mb-8 shadow-sm z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-[70px]">
+    <Card className="shadow-sm z-10 bg-background/90 sticky top-[70px]">
       <CardHeader className="pb-4 pt-4">
         <CardTitle className="text-xl flex items-center">
           <Filter className="mr-2 h-5 w-5" /> Фильтры
@@ -218,19 +217,22 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
           </div>
           <div className="lg:col-span-1">
             <label htmlFor="category" className="block text-sm font-medium text-foreground mb-1">Категория</label>
-             <CategoryTreeSelect
+            {isCategoryDataLoading ? <LoadingSpinner size={20}/> : (
+              <CategoryTreeSelect
                 treeData={categoriesTree}
                 value={selectedCategoryId}
                 onChange={(id) => setSelectedCategoryId(id)}
                 placeholder="Все категории"
               />
+            )}
           </div>
-          
+
           <div>
             <label htmlFor="region" className="block text-sm font-medium text-foreground mb-1">Область</label>
             <Select
               value={selectedRegionId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedRegionId}
               onValueChange={handleRegionChange}
+              disabled={isLocationDataLoading && !selectedRegionId} // Disable if loading overall, or specifically if no region selected yet
             >
               <SelectTrigger id="region"><SelectValue placeholder="Все области" /></SelectTrigger>
               <SelectContent>
@@ -244,7 +246,7 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
             <Select
               value={selectedDistrictId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedDistrictId}
               onValueChange={handleDistrictChange}
-              disabled={!selectedRegionId || districts.length === 0 && !!selectedRegionId} // Also disable if region selected but no districts yet (still loading)
+              disabled={isLocationDataLoading || !selectedRegionId || (districts.length === 0 && !!selectedRegionId) }
             >
               <SelectTrigger id="district"><SelectValue placeholder="Все районы" /></SelectTrigger>
               <SelectContent>
@@ -258,7 +260,7 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
             <Select
               value={selectedCityId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedCityId}
               onValueChange={handleCityChange}
-              disabled={!selectedDistrictId || cities.length === 0 && !!selectedDistrictId} // Also disable if district selected but no cities yet
+              disabled={isLocationDataLoading || !selectedDistrictId || (cities.length === 0 && !!selectedDistrictId)}
             >
               <SelectTrigger id="city"><SelectValue placeholder="Все города" /></SelectTrigger>
               <SelectContent>
