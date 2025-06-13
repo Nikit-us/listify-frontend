@@ -1,22 +1,7 @@
 
 import type {NextConfig} from 'next';
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-let apiHostname = '';
-let apiProtocol = 'http'; // Default to http
-let apiPort = ''; // Variable to store the port
-
-if (apiBaseUrl) {
-  try {
-    const url = new URL(apiBaseUrl);
-    apiHostname = url.hostname;
-    apiProtocol = url.protocol.replace(':', ''); // Get 'http' or 'https'
-    apiPort = url.port; // Extract the port
-  } catch (error) {
-    console.warn(`Invalid NEXT_PUBLIC_API_BASE_URL for image processing: ${apiBaseUrl}`, error);
-  }
-}
-
+// Base remote patterns that are always included
 const remotePatternsConfig = [
   {
     protocol: 'https',
@@ -24,17 +9,32 @@ const remotePatternsConfig = [
     port: '',
     pathname: '/**',
   },
+  {
+    protocol: 'https', // Assuming listify-app.site is over HTTPS
+    hostname: 'listify-app.site',
+    port: '', // Default port for https
+    pathname: '/uploads/**', // From the error: /uploads/ads/...
+  },
 ];
 
-if (apiHostname) {
-  remotePatternsConfig.push({
-    protocol: apiProtocol as 'http' | 'https',
-    hostname: apiHostname,
-    port: apiPort, // Use the extracted port here
-    pathname: '/uploads/**', // Covers /uploads/ads/** and /uploads/avatars/**
-  });
+// Attempt to add hostname from environment variable if it's set and different
+const apiBaseUrlFromEnv = process.env.NEXT_PUBLIC_API_BASE_URL;
+if (apiBaseUrlFromEnv) {
+  try {
+    const envUrl = new URL(apiBaseUrlFromEnv);
+    // Add if the hostname is different from what's already hardcoded
+    if (envUrl.hostname && envUrl.hostname !== 'listify-app.site') {
+      remotePatternsConfig.push({
+        protocol: envUrl.protocol.replace(':', '') as 'http' | 'https',
+        hostname: envUrl.hostname,
+        port: envUrl.port || '', // Use explicit port if present in URL
+        pathname: '/uploads/**', // Assuming a consistent path for uploads
+      });
+    }
+  } catch (error) {
+    console.warn(`Invalid NEXT_PUBLIC_API_BASE_URL ("${apiBaseUrlFromEnv}") for image processing in next.config.ts:`, error);
+  }
 }
-
 
 const nextConfig: NextConfig = {
   typescript: {
