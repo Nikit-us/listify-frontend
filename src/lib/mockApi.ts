@@ -77,17 +77,15 @@ let mockRegions: RegionDto[] = [
 ];
 
 let mockDistricts: DistrictDto[] = [
-  { id: 11, name: "Минский район" }, { id: 12, name: "Борисовский район" }, { id: 13, name: "Солигорский район" },
-  { id: 21, name: "Гомельский район" }, { id: 22, name: "Жлобинский район" }, { id: 23, name: "Речицкий район" },
-  { id: 31, name: "Брестский район" }, { id: 32, name: "Барановичский район" }, { id: 33, name: "Пинский район" },
+  { id: 11, name: "Минский район", regionId: 1 }, { id: 12, name: "Борисовский район", regionId: 1 }, { id: 13, name: "Солигорский район", regionId: 1 },
+  { id: 21, name: "Гомельский район", regionId: 2 }, { id: 22, name: "Жлобинский район", regionId: 2 }, { id: 23, name: "Речицкий район", regionId: 2 },
+  { id: 31, name: "Брестский район", regionId: 3 }, { id: 32, name: "Барановичский район", regionId: 3 }, { id: 33, name: "Пинский район", regionId: 3 },
 ];
-const mockDistrictToRegionMap: { [districtId: number]: number } = { 11:1, 12:1, 13:1, 21:2, 22:2, 23:2, 31:3, 32:3, 33:3 };
 
 let mockCities: CityDto[] = [
-  { id: 1, name: 'Минск' }, { id: 2, name: 'Гомель' }, { id: 3, name: 'Борисов' }, { id: 4, name: 'Жлобин' },
-  { id: 5, name: 'Солигорск' }, { id: 6, name: 'Речица' }, { id: 7, name: 'Брест' }, { id: 8, name: 'Барановичи' }, { id: 9, name: 'Пинск' }
+  { id: 1, name: 'Минск', districtId: 11 }, { id: 2, name: 'Гомель', districtId: 21 }, { id: 3, name: 'Борисов', districtId: 12 }, { id: 4, name: 'Жлобин', districtId: 22 },
+  { id: 5, name: 'Солигорск', districtId: 13 }, { id: 6, name: 'Речица', districtId: 23 }, { id: 7, name: 'Брест', districtId: 31 }, { id: 8, name: 'Барановичи', districtId: 32 }, { id: 9, name: 'Пинск', districtId: 33 }
 ];
-const mockCityToDistrictMap: { [cityId: number]: number } = { 1:11, 3:12, 5:13, 2:21, 4:22, 6:23, 7:31, 8:32, 9:33 };
 
 let mockCategoryTree: CategoryTreeDto[] = [
   { id: 1, name: 'Электроника', children: [
@@ -145,6 +143,7 @@ let mockUsers: UserProfileDto[] = [
     registeredAt: '2025-01-15T14:30:00.000Z',
     totalActiveAdvertisements: mockAds.filter(ad => ad.sellerId === 12 && ad.status === 'ACTIVE').length,
     avatarUrl: toAbsoluteImageUrl('https://placehold.co/100x100.png?text=IP'),
+    roles: ['ROLE_USER'],
   },
   {
     id: 13,
@@ -156,6 +155,7 @@ let mockUsers: UserProfileDto[] = [
     registeredAt: '2024-11-10T10:20:00.000Z',
     totalActiveAdvertisements: mockAds.filter(ad => ad.sellerId === 13 && ad.status === 'ACTIVE').length,
     avatarUrl: toAbsoluteImageUrl('https://placehold.co/100x100.png?text=AI'),
+    roles: ['ROLE_USER'],
   },
 ];
 
@@ -182,7 +182,7 @@ export const getRegions = async (): Promise<RegionDto[]> => {
     if (!response.ok) {
       const errorText = await response.text().catch(() => `Не удалось прочитать текст ошибки из ${url}`);
       console.error(`[mockApi] Не удалось получить регионы. Статус: ${response.status}, URL: ${url}, Ответ: ${errorText}`);
-      throw new Error(`Не удалось получить регионы. Статус: ${response.status}. ${errorText}`);
+      throw new Error(`Не удалось получить регионы. Статус: ${response.status}. Сообщение: ${errorText}`);
     }
     return response.json();
   } catch (error) {
@@ -195,7 +195,7 @@ export const getDistrictsByRegion = async (regionId: number): Promise<DistrictDt
    if (!API_BASE_URL) {
     console.warn("[mockApi] API_BASE_URL не установлен или невалиден, используются мок-данные для getDistrictsByRegion");
     await new Promise(resolve => setTimeout(resolve, 100));
-    return JSON.parse(JSON.stringify(mockDistricts.filter(d => mockDistrictToRegionMap[d.id] === regionId)));
+    return JSON.parse(JSON.stringify(mockDistricts.filter(d => d.regionId === regionId)));
   }
   const url = `${API_BASE_URL}/locations/districts?regionId=${regionId}`;
   console.log(`[mockApi] Fetching districts for region ${regionId} from: ${url}`);
@@ -204,7 +204,7 @@ export const getDistrictsByRegion = async (regionId: number): Promise<DistrictDt
     if (!response.ok) {
       const errorText = await response.text().catch(() => `Не удалось прочитать текст ошибки из ${url}`);
       console.error(`[mockApi] Не удалось получить районы для региона ${regionId}. Статус: ${response.status}, URL: ${url}, Ответ: ${errorText}`);
-      throw new Error(`Не удалось получить районы для региона ${regionId}. Статус: ${response.status}. ${errorText}`);
+      throw new Error(`Не удалось получить районы для региона ${regionId}. Статус: ${response.status}. Сообщение: ${errorText}`);
     }
     return response.json();
   } catch (error) {
@@ -217,7 +217,7 @@ export const getCitiesByDistrict = async (districtId: number): Promise<CityDto[]
   if (!API_BASE_URL) {
     console.warn("[mockApi] API_BASE_URL не установлен или невалиден, используются мок-данные для getCitiesByDistrict");
     await new Promise(resolve => setTimeout(resolve, 100));
-    return JSON.parse(JSON.stringify(mockCities.filter(c => mockCityToDistrictMap[c.id] === districtId)));
+    return JSON.parse(JSON.stringify(mockCities.filter(c => c.districtId === districtId)));
   }
   const url = `${API_BASE_URL}/locations/cities?districtId=${districtId}`;
   console.log(`[mockApi] Fetching cities for district ${districtId} from: ${url}`);
@@ -226,7 +226,7 @@ export const getCitiesByDistrict = async (districtId: number): Promise<CityDto[]
     if (!response.ok) {
       const errorText = await response.text().catch(() => `Не удалось прочитать текст ошибки из ${url}`);
       console.error(`[mockApi] Не удалось получить города для района ${districtId}. Статус: ${response.status}, URL: ${url}, Ответ: ${errorText}`);
-      throw new Error(`Не удалось получить города для района ${districtId}. Статус: ${response.status}. ${errorText}`);
+      throw new Error(`Не удалось получить города для района ${districtId}. Статус: ${response.status}. Сообщение: ${errorText}`);
     }
     return response.json();
   } catch (error) {
@@ -248,7 +248,7 @@ export const getCategoriesAsTree = async (): Promise<CategoryTreeDto[]> => {
     if (!response.ok) {
       const errorText = await response.text().catch(() => `Не удалось прочитать текст ошибки из ${url}`);
       console.error(`[mockApi] Не удалось получить дерево категорий. Статус: ${response.status}, URL: ${url}, Ответ: ${errorText}`);
-      throw new Error(`Не удалось получить дерево категорий. Статус: ${response.status}. ${errorText}`);
+      throw new Error(`Не удалось получить дерево категорий. Статус: ${response.status}. Сообщение: ${errorText}`);
     }
     return response.json();
   } catch (error) {
@@ -269,13 +269,14 @@ export const searchAds = async (
     let filteredMockAds = [...mockAds];
     if (filters.keyword) filteredMockAds = filteredMockAds.filter(ad => ad.title.toLowerCase().includes(filters.keyword!.toLowerCase()) || ad.description.toLowerCase().includes(filters.keyword!.toLowerCase()));
     if (filters.cityId) filteredMockAds = filteredMockAds.filter(ad => ad.cityId === filters.cityId);
+    
     if (filters.regionId) {
-      const districtsInRegion = mockDistricts.filter(d => mockDistrictToRegionMap[d.id] === filters.regionId).map(d => d.id);
-      const citiesInRegion = mockCities.filter(c => districtsInRegion.includes(mockCityToDistrictMap[c.id])).map(c => c.id);
-      filteredMockAds = filteredMockAds.filter(ad => citiesInRegion.includes(ad.cityId));
+        const districtsInRegion = mockDistricts.filter(d => d.regionId === filters.regionId).map(d => d.id);
+        const citiesInRegion = mockCities.filter(c => districtsInRegion.includes(c.districtId!)).map(c => c.id);
+        filteredMockAds = filteredMockAds.filter(ad => citiesInRegion.includes(ad.cityId));
     }
      if (filters.districtId) {
-      const citiesInDistrict = mockCities.filter(c => mockCityToDistrictMap[c.id] === filters.districtId).map(c => c.id);
+      const citiesInDistrict = mockCities.filter(c => c.districtId === filters.districtId).map(c => c.id);
       filteredMockAds = filteredMockAds.filter(ad => citiesInDistrict.includes(ad.cityId));
     }
     if (filters.minPrice) filteredMockAds = filteredMockAds.filter(ad => ad.price >= filters.minPrice!);
@@ -286,12 +287,11 @@ export const searchAds = async (
         const findInChildren = (nodes: CategoryTreeDto[], targetId: number) => {
             for (const node of nodes) {
                 if (node.id === targetId) {
-                    ids.push(node.id);
                     const collectChildren = (n: CategoryTreeDto) => {
                         ids.push(n.id);
                         if (n.children) n.children.forEach(collectChildren);
                     };
-                    if (node.children) node.children.forEach(collectChildren);
+                    collectChildren(node); 
                     return true;
                 }
                 if (node.children && findInChildren(node.children, targetId)) return true;
@@ -330,7 +330,7 @@ export const searchAds = async (
     if (!response.ok) {
       const errorText = await response.text().catch(() => `Не удалось прочитать текст ошибки для searchAds из ${url}`);
       console.error(`[mockApi] Не удалось найти объявления. Статус: ${response.status}, URL: ${url}, Ответ: ${errorText}`);
-      throw new Error(`Не удалось найти объявления. Статус: ${response.status}. ${errorText}`);
+      throw new Error(`Не удалось найти объявления. Статус: ${response.status}. Сообщение: ${errorText}`);
     }
     const data: Page<AdvertisementResponseDto> = await response.json();
     data.content = data.content.map(ad => ({ ...ad, previewImageUrl: toAbsoluteImageUrl(ad.previewImageUrl) }));
@@ -363,7 +363,7 @@ export const getAdById = async (id: number): Promise<AdvertisementDetailDto | nu
       if (response.status === 404) return null;
       const errorText = await response.text().catch(() => `Не удалось прочитать текст ошибки из ${url}`);
       console.error(`[mockApi] Не удалось получить объявление ${id}. Статус: ${response.status}, URL: ${url}, Ответ: ${errorText}`);
-      throw new Error(`Не удалось получить объявление ${id}. Статус: ${response.status}. ${errorText}`);
+      throw new Error(`Не удалось получить объявление ${id}. Статус: ${response.status}. Сообщение: ${errorText}`);
     }
     const ad: AdvertisementDetailDto = await response.json();
     if (ad) {
@@ -382,8 +382,8 @@ export const login = async (credentials: LoginRequestDto): Promise<JwtResponseDt
     console.warn("[mockApi] API_BASE_URL не установлен или невалиден, используются мок-данные для login");
     await new Promise(resolve => setTimeout(resolve, 100));
     const user = mockUsers.find(u => u.email === credentials.email);
-    if (user && credentials.password === 'password123') {
-      return { token: `mock-jwt-token-for-${user.email}`, type: 'Bearer', userId: user.id, email: user.email, roles: ['ROLE_USER'] };
+    if (user && credentials.password === 'password123') { // Simplified mock password check
+      return { token: `mock-jwt-token-for-${user.email}`, type: 'Bearer', userId: user.id, email: user.email, roles: user.roles || ['ROLE_USER'] };
     }
     throw new Error('Неверные учетные данные (мок)');
   }
@@ -411,7 +411,7 @@ export const register = async (data: UserRegistrationDto, avatar?: File): Promis
   const formData = new FormData();
   formData.append('user', new Blob([JSON.stringify(data)], { type: "application/json" }));
   if (avatar) {
-    formData.append('avatar', avatar);
+    formData.append('avatar', avatar, avatar.name); // Added filename
   }
 
   if (!API_BASE_URL) {
@@ -422,11 +422,12 @@ export const register = async (data: UserRegistrationDto, avatar?: File): Promis
     const newUserProfileData: UserProfileDto = {
       id: newUserId, email: data.email, fullName: data.fullName, phoneNumber: data.phoneNumber, cityId: data.cityId,
       cityName: mockCities.find(c=>c.id === data.cityId)?.name || "Неизвестный Город", registeredAt: new Date().toISOString(),
-      avatarUrl: avatar ? toAbsoluteImageUrl(`/uploads/avatars/mock-avatar-${newUserId}.jpg`) : undefined,
+      avatarUrl: avatar ? toAbsoluteImageUrl(`/uploads/avatars/mock-avatar-${newUserId}-${avatar.name}`) : undefined,
       totalActiveAdvertisements: 0,
+      roles: ['ROLE_USER'],
     };
     mockUsers.push(newUserProfileData);
-    const { totalActiveAdvertisements, cityName, ...userResponsePartial } = newUserProfileData;
+    const { totalActiveAdvertisements, cityName, roles, ...userResponsePartial } = newUserProfileData;
     const finalUserResponse: UserResponseDto = {
         ...userResponsePartial,
         cityId: newUserProfileData.cityId,
@@ -460,7 +461,7 @@ export const createAd = async (data: AdvertisementCreateDto, images: File[] | un
   const formData = new FormData();
   formData.append('advertisement', new Blob([JSON.stringify(data)], { type: "application/json" }));
   if (images && images.length > 0) {
-    images.forEach(file => formData.append('images', file));
+    images.forEach(file => formData.append('images', file, file.name)); // Added filename
   }
 
   if (!API_BASE_URL) {
@@ -470,7 +471,7 @@ export const createAd = async (data: AdvertisementCreateDto, images: File[] | un
     const newAdId = Math.max(...mockAds.map(ad => ad.id), 0) + 1;
     const createdImages: AdvertisementImageDto[] = images?.map((img, i) => ({
         id: Date.now() + i,
-        imageUrl: toAbsoluteImageUrl(`/uploads/ads/mock-ad${newAdId}-img${i+1}.jpg`)!,
+        imageUrl: toAbsoluteImageUrl(`/uploads/ads/mock-ad${newAdId}-img${i+1}-${img.name}`)!,
         isPreview: i === 0,
     })) || [{
         id: Date.now(),
@@ -501,7 +502,7 @@ export const createAd = async (data: AdvertisementCreateDto, images: File[] | un
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: 'Не удалось создать объявление с не-JSON ответом' }));
       console.error(`[mockApi] Не удалось создать объявление. Статус: ${response.status}, URL: ${url}, Ответ: ${JSON.stringify(errorData)}`);
-      throw new Error(errorData.message || `Не удалось создать объявление. Статус: ${response.status}`);
+      throw new Error(errorData.message || `Не удалось создать объявление. Статус: ${response.status}. URL: ${url}`);
     }
     const ad: AdvertisementDetailDto = await response.json();
     ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
@@ -518,7 +519,7 @@ export const updateAd = async (id: number, data: AdvertisementUpdateDto, newImag
   formData.append('advertisement', new Blob([JSON.stringify(data)], { type: "application/json" }));
 
   if (newImages && newImages.length > 0) {
-    newImages.forEach(file => formData.append('images', file));
+    newImages.forEach(file => formData.append('images', file, file.name)); // Added filename
   }
 
   if (!API_BASE_URL) {
@@ -550,17 +551,27 @@ export const updateAd = async (id: number, data: AdvertisementUpdateDto, newImag
     }
     if (newImages && newImages.length > 0) {
         const addedImages: AdvertisementImageDto[] = newImages.map((img, i) => ({
-            id: Date.now() + i + 2000,
-            imageUrl: toAbsoluteImageUrl(`/uploads/ads/mock-updated-ad${id}-newimg${i+1}.jpg`)!,
+            id: Date.now() + i + 2000, // Ensure unique IDs for mock
+            imageUrl: toAbsoluteImageUrl(`/uploads/ads/mock-updated-ad${id}-newimg${i+1}-${img.name}`)!,
             isPreview: updatedAd.images.length === 0 && i === 0,
         }));
         updatedAd.images = [...updatedAd.images, ...addedImages];
+        
+        // Ensure only one preview image after update
         let hasPreview = false;
-        updatedAd.images = updatedAd.images.map(img => {
-            if (img.isPreview && !hasPreview) { hasPreview = true; return img; }
+        updatedAd.images = updatedAd.images.map((img, index) => {
+            if (index === 0 && !updatedAd.images.some(i => i.isPreview)) { // if no preview set, set first as preview
+                 hasPreview = true;
+                 return {...img, isPreview: true};
+            }
+            if (img.isPreview && !hasPreview) { 
+                hasPreview = true; 
+                return img; 
+            }
             return {...img, isPreview: false};
         });
         if (!hasPreview && updatedAd.images.length > 0) updatedAd.images[0].isPreview = true;
+
     }
     updatedAd.previewImageUrl = updatedAd.images.find(img => img.isPreview)?.imageUrl || (updatedAd.images.length > 0 ? toAbsoluteImageUrl(updatedAd.images[0].imageUrl) : undefined);
     mockAds[adIndex] = updatedAd;
@@ -576,7 +587,7 @@ export const updateAd = async (id: number, data: AdvertisementUpdateDto, newImag
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: 'Не удалось обновить объявление с не-JSON ответом' }));
       console.error(`[mockApi] Не удалось обновить объявление. Статус: ${response.status}, URL: ${url}, Ответ: ${JSON.stringify(errorData)}`);
-      throw new Error(errorData.message || `Не удалось обновить объявление. Статус: ${response.status}`);
+      throw new Error(errorData.message || `Не удалось обновить объявление. Статус: ${response.status}. URL: ${url}`);
     }
     const ad: AdvertisementDetailDto = await response.json();
     ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
@@ -588,7 +599,7 @@ export const updateAd = async (id: number, data: AdvertisementUpdateDto, newImag
   }
 };
 
-export const getUserProfile = async (userId: number): Promise<UserProfileDto | null> => {
+export const getUserProfile = async (userId: number, token?: string | null): Promise<UserProfileDto | null> => {
   if (!API_BASE_URL) {
     console.warn("[mockApi] API_BASE_URL не установлен или невалиден, используются мок-данные для getUserProfile");
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -601,11 +612,11 @@ export const getUserProfile = async (userId: number): Promise<UserProfileDto | n
     }
     return null;
   }
-
+  const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
   const url = `${API_BASE_URL}/users/${userId}`;
   console.log(`[mockApi] Fetching user profile for ${userId} from: ${url}`);
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { headers });
     if (!response.ok) {
       if (response.status === 404) {
         console.warn(`[mockApi] Профиль пользователя для userId ${userId} не найден (404) по адресу ${url}.`);
@@ -613,7 +624,7 @@ export const getUserProfile = async (userId: number): Promise<UserProfileDto | n
       }
       const errorText = await response.text().catch(() => `Не удалось прочитать текст ошибки из ${url}`);
       console.error(`[mockApi] Не удалось получить профиль пользователя ${userId}. Статус: ${response.status}, URL: ${url}, Ответ: ${errorText}`);
-      throw new Error(`Не удалось получить профиль пользователя ${userId}. Статус: ${response.status}. ${errorText}`);
+      throw new Error(`Не удалось получить профиль пользователя ${userId}. Статус: ${response.status}. Сообщение: ${errorText}`);
     }
     const profile: UserProfileDto = await response.json();
     profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl);
@@ -628,7 +639,10 @@ export const getCurrentUserProfile = async (token: string): Promise<UserProfileD
   if (!API_BASE_URL) {
     console.warn("[mockApi] API_BASE_URL не установлен или невалиден, используются мок-данные для getCurrentUserProfile");
     await new Promise(resolve => setTimeout(resolve, 100));
-    const mockJwtUser = mockUsers.find(u => `mock-jwt-token-for-${u.email}` === token) || mockUsers[0];
+    // Simple mock: find user whose mock token matches or default to first user
+    const mockUserEmail = token.replace('mock-jwt-token-for-', '');
+    const mockJwtUser = mockUsers.find(u => u.email === mockUserEmail) || mockUsers[0];
+
     if (mockJwtUser) {
         const clonedUser = JSON.parse(JSON.stringify(mockJwtUser));
         clonedUser.totalActiveAdvertisements = mockAds.filter(ad => ad.sellerId === clonedUser.id && ad.status === 'ACTIVE').length;
@@ -652,7 +666,7 @@ export const getCurrentUserProfile = async (token: string): Promise<UserProfileD
       const errorData = await response.json().catch(() => null);
       const errorMessage = errorData?.message || await response.text().catch(() => `Не удалось прочитать текст ошибки для getCurrentUserProfile из ${url}`);
       console.error(`[mockApi] Не удалось получить текущий профиль пользователя. Статус: ${response.status}, URL: ${url}, Ответ: ${errorMessage}`);
-      throw new Error(`Не удалось получить текущий профиль пользователя. Статус: ${response.status}. ${errorMessage}`);
+      throw new Error(`Не удалось получить текущий профиль пользователя. Статус: ${response.status}. Сообщение: ${errorMessage}`);
     }
     const profile: UserProfileDto = await response.json();
     profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl);
@@ -667,20 +681,22 @@ export const updateUserProfile = async (data: UserUpdateProfileDto, avatar: File
   const formData = new FormData();
   formData.append('profile', new Blob([JSON.stringify(data)], { type: "application/json" }) );
   if (avatar) {
-    formData.append('avatar', avatar);
+    formData.append('avatar', avatar, avatar.name); // Added filename
   }
 
   if (!API_BASE_URL) {
     console.warn("[mockApi] API_BASE_URL не установлен или невалиден, используются мок-данные для updateUserProfile");
     await new Promise(resolve => setTimeout(resolve, 100));
-    let userToUpdateIdx = mockUsers.findIndex(u => `mock-jwt-token-for-${u.email}` === token);
-    if (userToUpdateIdx === -1 && mockUsers.length > 0) userToUpdateIdx = 0;
+    
+    const mockUserEmail = token.replace('mock-jwt-token-for-', '');
+    let userToUpdateIdx = mockUsers.findIndex(u => u.email === mockUserEmail);
+    if (userToUpdateIdx === -1 && mockUsers.length > 0) userToUpdateIdx = 0; // Default to first if no match by token pattern
 
     if (userToUpdateIdx !== -1) {
         const userToUpdate = mockUsers[userToUpdateIdx];
-        const updatedUser: UserProfileDto = { ...userToUpdate, ...data, id: userToUpdate.id, email: userToUpdate.email, registeredAt: userToUpdate.registeredAt, totalActiveAdvertisements: userToUpdate.totalActiveAdvertisements };
+        const updatedUser: UserProfileDto = { ...userToUpdate, ...data, id: userToUpdate.id, email: userToUpdate.email, registeredAt: userToUpdate.registeredAt, totalActiveAdvertisements: userToUpdate.totalActiveAdvertisements, roles: userToUpdate.roles || ['ROLE_USER'] };
         if (data.cityId) updatedUser.cityName = mockCities.find(c=>c.id === data.cityId)?.name || userToUpdate.cityName;
-        if (avatar) updatedUser.avatarUrl = toAbsoluteImageUrl(`/uploads/avatars/mock-avatar-updated-${userToUpdate.id}.jpg`);
+        if (avatar) updatedUser.avatarUrl = toAbsoluteImageUrl(`/uploads/avatars/mock-avatar-updated-${userToUpdate.id}-${avatar.name}`);
 
         mockUsers[userToUpdateIdx] = updatedUser;
         return JSON.parse(JSON.stringify(updatedUser));
@@ -697,7 +713,7 @@ export const updateUserProfile = async (data: UserUpdateProfileDto, avatar: File
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: 'Не удалось обновить профиль с не-JSON ответом' }));
       console.error(`[mockApi] Не удалось обновить профиль. Статус: ${response.status}, URL: ${url}, Ответ: ${JSON.stringify(errorData)}`);
-      throw new Error(errorData.message || `Не удалось обновить профиль. Статус: ${response.status}`);
+      throw new Error(errorData.message || `Не удалось обновить профиль. Статус: ${response.status}. URL: ${url}`);
     }
     const profile: UserProfileDto = await response.json();
     profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl);
@@ -714,7 +730,10 @@ export const deleteAd = async (adId: number, token: string): Promise<void> => {
     console.warn("[mockApi] API_BASE_URL не установлен или невалиден, используются мок-данные для deleteAd");
     await new Promise(resolve => setTimeout(resolve, 100));
     const adIndex = mockAds.findIndex(ad => ad.id === adId);
-    const mockCurrentUser = mockUsers.find(u => `mock-jwt-token-for-${u.email}` === token) || mockUsers[0];
+    
+    const mockUserEmail = token.replace('mock-jwt-token-for-', '');
+    const mockCurrentUser = mockUsers.find(u => u.email === mockUserEmail) || mockUsers[0];
+
     if (adIndex === -1 || (mockCurrentUser && mockAds[adIndex].sellerId !== mockCurrentUser.id) ) {
         throw new Error('Объявление не найдено или пользователь не авторизован для удаления (мок)');
     }
@@ -736,7 +755,7 @@ export const deleteAd = async (adId: number, token: string): Promise<void> => {
       try {
         const errorBody = await response.text();
         if (errorBody) {
-            errorMessage += `. ${errorBody}`;
+            errorMessage += `. Сообщение: ${errorBody}`;
         }
       } catch (e) { /* ignore if cannot read body */ }
       console.error(`[mockApi] Не удалось удалить объявление. Статус: ${response.status}, URL: ${url}`);
@@ -748,6 +767,7 @@ export const deleteAd = async (adId: number, token: string): Promise<void> => {
   }
 };
 
+// This function flattens the category tree.
 export const getCategories = async (): Promise<CategoryDto[]> => {
   if (!API_BASE_URL) {
     console.warn("[mockApi] API_BASE_URL не установлен или невалиден, используются мок-данные для getCategories (плоский)");
@@ -764,14 +784,14 @@ export const getCategories = async (): Promise<CategoryDto[]> => {
     };
     return flatten(mockCategoryTree);
   }
-  const url = `${API_BASE_URL}/categories`;
+  const url = `${API_BASE_URL}/categories`; // This endpoint returns flat list according to API spec
   console.log(`[mockApi] Fetching flat categories from: ${url}`);
   try {
     const response = await fetch(url);
     if (!response.ok) {
       const errorText = await response.text().catch(() => `Не удалось прочитать текст ошибки из ${url}`);
       console.error(`[mockApi] Не удалось получить категории. Статус: ${response.status}, URL: ${url}, Ответ: ${errorText}`);
-      throw new Error(`Не удалось получить категории. Статус: ${response.status}. ${errorText}`);
+      throw new Error(`Не удалось получить категории. Статус: ${response.status}. Сообщение: ${errorText}`);
     }
     return response.json();
   } catch (error) {
@@ -780,20 +800,25 @@ export const getCategories = async (): Promise<CategoryDto[]> => {
   }
 };
 
+// This function returns all cities, used by Register and Profile forms currently
 export const getAllCitiesFlat = async (): Promise<CityDto[]> => {
   if (!API_BASE_URL) {
     console.warn("[mockApi] API_BASE_URL не установлен или невалиден, используются мок-данные для getAllCitiesFlat");
     await new Promise(resolve => setTimeout(resolve, 100));
     return JSON.parse(JSON.stringify(mockCities));
   }
-  const url = `${API_BASE_URL}/locations/cities`;
+  // Assuming there's an endpoint to get all cities without districtId, or modify if not.
+  // The API spec provided `/api/locations/cities?districtId=...`
+  // For now, let's assume a general /api/locations/cities (without query param) returns all.
+  // If not, this needs adjustment or the forms need to implement full hierarchy selection.
+  const url = `${API_BASE_URL}/locations/cities`; 
   console.log(`[mockApi] Fetching all cities (flat) from: ${url}`);
   try {
     const response = await fetch(url);
     if (!response.ok) {
       const errorText = await response.text().catch(() => `Не удалось прочитать текст ошибки из ${url}`);
       console.error(`[mockApi] Не удалось получить все города. Статус: ${response.status}, URL: ${url}, Ответ: ${errorText}`);
-      throw new Error(`Не удалось получить все города. Статус: ${response.status}. ${errorText}`);
+      throw new Error(`Не удалось получить все города. Статус: ${response.status}. Сообщение: ${errorText}`);
     }
     return response.json();
   } catch (error) {
@@ -802,26 +827,11 @@ export const getAllCitiesFlat = async (): Promise<CityDto[]> => {
   }
 };
 
+// getCities is used by forms that might not implement full hierarchy selection yet.
+// It defaults to fetching all cities.
 export const getCities = async (): Promise<CityDto[]> => {
-  if (!API_BASE_URL) {
-     console.warn("[mockApi] API_BASE_URL не установлен или невалиден, используются мок-данные для getCities (плоский список через getAllCitiesFlat)");
-     return getAllCitiesFlat();
-  }
-  const url = `${API_BASE_URL}/locations/cities`;
-  console.log(`[mockApi] Fetching cities (flat list, potentially all) from: ${url}`);
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => `Не удалось прочитать текст ошибки из ${url}`);
-      console.error(`[mockApi] Не удалось получить города (плоский список). Статус: ${response.status}, URL: ${url}, Ответ: ${errorText}`);
-      throw new Error(`Не удалось получить города (плоский список). Статус: ${response.status}. ${errorText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка или неверный URL при получении городов (плоский список) из ${url}:`, error);
-    throw new Error(`Сетевая ошибка или неверный URL при получении городов (плоский список). URL: ${url}. Исходная ошибка: ${(error as Error).message}`);
-  }
+   console.warn("[mockApi] getCities is called, typically for forms. Consider updating forms to use hierarchical location selection if needed.");
+   return getAllCitiesFlat();
 };
 
-// Ensure all functions are exported
-export { }
+    
