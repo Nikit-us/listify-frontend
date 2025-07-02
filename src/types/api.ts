@@ -1,41 +1,49 @@
 
-export interface PageableObject {
-  offset: number;
-  sort: SortObject;
-  pageSize: number;
-  pageNumber: number;
-  paged: boolean;
-  unpaged: boolean;
+export interface ApiError {
+  timestamp: string;
+  status: number;
+  error: string;
+  message: Record<string, unknown> | string;
+  path: string;
 }
 
-export interface SortObject {
-  empty: boolean;
-  sorted: boolean;
-  unsorted: boolean;
-}
-
-export interface Page<T> {
+export interface PageResponseDto<T> {
   content: T[];
-  totalPages: number;
-  totalElements: number;
+  number: number;
   size: number;
-  number: number; // current page number
-  pageable: PageableObject;
+  totalElements: number;
+  totalPages: number;
   last: boolean;
-  first: boolean;
-  numberOfElements: number;
-  sort: SortObject;
-  empty: boolean;
 }
 
-export interface AdvertisementResponseDto {
+export interface UserUpdateProfileDto {
+  fullName?: string;
+  phoneNumber?: string;
+  cityId?: number;
+}
+
+export interface UserProfileDto {
   id: number;
-  title: string;
-  price: number;
+  fullName: string;
+  email: string;
   cityId: number;
   cityName: string;
-  createdAt: string; // ISO date string
-  previewImageUrl?: string;
+  phoneNumber: string;
+  registeredAt: string; // ISO date-time string
+  totalActiveAdvertisements: number;
+  avatarUrl: string;
+  roles?: string[]; // Added roles based on JWT response
+}
+
+export interface AdvertisementUpdateDto {
+  title?: string;
+  description?: string;
+  price?: number;
+  categoryId?: number;
+  cityId?: number;
+  condition?: "NEW" | "USED_PERFECT" | "USED_GOOD" | "USED_FAIR";
+  status?: "ACTIVE" | "INACTIVE" | "SOLD";
+  imageIdsToDelete?: number[];
 }
 
 export interface AdvertisementImageDto {
@@ -44,16 +52,61 @@ export interface AdvertisementImageDto {
   isPreview: boolean;
 }
 
-export interface AdvertisementDetailDto extends AdvertisementResponseDto {
+export interface AdvertisementDetailDto {
+  id: number;
+  title: string;
   description: string;
-  updatedAt: string; // ISO date string
+  price: number;
+  createdAt: string; // ISO date-time string
+  updatedAt: string; // ISO date-time string
   status: "ACTIVE" | "INACTIVE" | "SOLD";
   condition: "NEW" | "USED_PERFECT" | "USED_GOOD" | "USED_FAIR";
   categoryId: number;
   categoryName: string;
+  cityId: number;
+  cityName: string;
   sellerId: number;
   sellerName: string;
   images: AdvertisementImageDto[];
+}
+
+// This is the DTO for list views, like search results
+export interface AdvertisementResponseDto {
+    id: number;
+    title: string;
+    price: number;
+    cityId: number;
+    cityName: string;
+    createdAt: string; // ISO date string
+    previewImageUrl?: string;
+}
+
+
+export interface CategoryCreateDto {
+  name: string;
+  parentCategoryId?: number;
+}
+
+export interface CategoryDto {
+  id: number;
+  name: string;
+}
+
+export interface UserRegistrationDto {
+  fullName: string;
+  email: string;
+  password: string;
+  phoneNumber?: string;
+  cityId: number;
+}
+
+export interface UserResponseDto {
+  id: number;
+  email: string;
+  fullName: string;
+  phoneNumber?: string;
+  registeredAt: string; // ISO date-time string
+  avatarUrl?: string;
 }
 
 export interface LoginRequestDto {
@@ -69,25 +122,6 @@ export interface JwtResponseDto {
   roles: string[];
 }
 
-export interface UserRegistrationDto {
-  fullName: string;
-  email: string;
-  password: string;
-  phoneNumber?: string;
-  cityId: number;
-}
-
-export interface UserResponseDto {
-  id: number;
-  email:string;
-  fullName: string;
-  phoneNumber?: string;
-  registeredAt: string; // ISO date string
-  avatarUrl?: string;
-  cityId?: number; 
-  cityName?: string; 
-}
-
 export interface AdvertisementCreateDto {
   title: string;
   description: string;
@@ -95,23 +129,6 @@ export interface AdvertisementCreateDto {
   categoryId: number;
   cityId: number;
   condition: "NEW" | "USED_PERFECT" | "USED_GOOD" | "USED_FAIR";
-}
-
-export type AdvertisementUpdateDto = Partial<Omit<AdvertisementCreateDto, 'categoryId' | 'cityId'>> & {
-  status?: "ACTIVE" | "INACTIVE" | "SOLD";
-  categoryId?: number;
-  cityId?: number;
-  imageIdsToDelete?: number[];
-};
-
-export interface UserProfileDto extends UserResponseDto {
-  totalActiveAdvertisements: number;
-}
-
-export interface UserUpdateProfileDto {
-  fullName?: string;
-  phoneNumber?: string;
-  cityId?: number;
 }
 
 export interface RegionDto {
@@ -122,37 +139,27 @@ export interface RegionDto {
 export interface DistrictDto {
   id: number;
   name: string;
-  // regionId?: number; // Might be useful if API provides it directly
+  regionId: number;
 }
 
 export interface CityDto {
   id: number;
   name: string;
-  // districtId?: number; // Might be useful if API provides it directly
+  districtId: number;
 }
 
-export interface CategoryDto { // Flat category structure
-  id: number;
-  name: string;
-}
-
-export interface CategoryTreeDto { // Hierarchical category structure
+export interface CategoryTreeDto {
   id: number;
   name: string;
   children: CategoryTreeDto[];
 }
 
-export interface CategoryCreateDto {
-  name: string;
-  parentCategoryId?: number;
-}
-
 export interface AdvertisementSearchCriteriaDto {
   keyword?: string;
   categoryId?: number;
-  cityId?: number; 
-  regionId?: number;
-  districtId?: number;
+  cityId?: number;
+  regionId?: number; // Added for filter consistency
+  districtId?: number; // Added for filter consistency
   minPrice?: number;
   maxPrice?: number;
   condition?: "NEW" | "USED_PERFECT" | "USED_GOOD" | "USED_FAIR";

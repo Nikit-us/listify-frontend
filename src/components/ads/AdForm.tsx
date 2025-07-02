@@ -13,11 +13,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
 import ImageUpload from '@/components/shared/ImageUpload';
-import CategoryTreeSelect from '@/components/shared/CategoryTreeSelect'; // Updated import
+import CategoryTreeSelect from '@/components/shared/CategoryTreeSelect';
 import {
   createAd,
   updateAd,
-  getCategoriesAsTree, // Updated to use tree
+  getCategoriesAsTree,
   getRegions,
   getDistrictsByRegion,
   getCitiesByDistrict,
@@ -26,7 +26,7 @@ import {
 import type {
   AdvertisementCreateDto,
   AdvertisementUpdateDto,
-  CategoryTreeDto, // Updated type
+  CategoryTreeDto,
   RegionDto,
   DistrictDto,
   CityDto,
@@ -39,11 +39,11 @@ import { ArrowLeft } from 'lucide-react';
 
 const adSchema = z.object({
   title: z.string().min(5, { message: 'Заголовок должен быть не менее 5 символов.' }).max(50, { message: 'Заголовок не должен превышать 50 символов.' }),
-  description: z.string().min(20, { message: 'Описание должно быть не менее 20 символов.' }).max(5000, { message: 'Описание не должно превышать 5000 символов.' }),
+  description: z.string().min(0).max(5000, { message: 'Описание не должно превышать 5000 символов.' }),
   price: z.coerce.number().min(0, { message: 'Цена не может быть отрицательной.' }),
   categoryId: z.coerce.number({invalid_type_error: 'Выберите категорию.'}).min(1, { message: 'Выберите категорию.' }),
-  regionId: z.string().optional(), // Keep as string for Select value
-  districtId: z.string().optional(), // Keep as string for Select value
+  regionId: z.string().optional(),
+  districtId: z.string().optional(),
   cityId: z.coerce.number({invalid_type_error: 'Выберите город.'}).min(1, { message: 'Выберите город.' }),
   condition: z.enum(['NEW', 'USED_PERFECT', 'USED_GOOD', 'USED_FAIR'], { required_error: 'Укажите состояние товара.' }),
 });
@@ -129,9 +129,6 @@ export default function AdForm({ adId }: AdFormProps) {
             categoryId: adData.categoryId,
             cityId: adData.cityId,
             condition: adData.condition,
-            // regionId and districtId are not directly available from adData.cityId.
-            // They will not be pre-filled to avoid complexity without a dedicated API endpoint.
-            // User needs to re-select if changing city.
           });
           setExistingImages(adData.images.map(img => ({ id: img.id, url: img.imageUrl })));
           setNewlySelectedImages([]);
@@ -210,7 +207,7 @@ export default function AdForm({ adId }: AdFormProps) {
 
     try {
       let savedAd: AdvertisementDetailDto;
-      const basePayload = {
+      const basePayload: AdvertisementCreateDto = {
         title: data.title,
         description: data.description,
         price: Number(data.price),
@@ -227,8 +224,7 @@ export default function AdForm({ adId }: AdFormProps) {
         savedAd = await updateAd(adId, updatePayload, newlySelectedImages.length > 0 ? newlySelectedImages : undefined, token);
         toast({ title: "Успех!", description: "Объявление успешно обновлено." });
       } else {
-        const createPayload: AdvertisementCreateDto = basePayload;
-        savedAd = await createAd(createPayload, newlySelectedImages.length > 0 ? newlySelectedImages : undefined, token);
+        savedAd = await createAd(basePayload, newlySelectedImages.length > 0 ? newlySelectedImages : undefined, token);
         toast({ title: "Успех!", description: "Объявление успешно создано." });
       }
       router.push(`/ads/${savedAd.id}`);
@@ -305,7 +301,7 @@ export default function AdForm({ adId }: AdFormProps) {
                      <CategoryTreeSelect
                         treeData={categoriesTree}
                         value={field.value}
-                        onChange={(id) => field.onChange(id)} // Pass only id to RHF
+                        onChange={(id) => field.onChange(id)}
                         placeholder="Выберите категорию"
                       />
                   </FormControl>
@@ -324,8 +320,6 @@ export default function AdForm({ adId }: AdFormProps) {
                     <Select
                       onValueChange={(value) => {
                         field.onChange(value);
-                        // form.setValue('districtId', undefined); // Handled by useEffect
-                        // form.setValue('cityId', undefined);     // Handled by useEffect
                       }}
                       value={field.value}
                       disabled={isLocationLoading && !field.value}
@@ -352,7 +346,6 @@ export default function AdForm({ adId }: AdFormProps) {
                     <Select
                       onValueChange={(value) => {
                         field.onChange(value);
-                        // form.setValue('cityId', undefined); // Handled by useEffect
                       }}
                       value={field.value}
                       disabled={isLocationLoading || !watchedRegionId || districts.length === 0}
@@ -440,5 +433,3 @@ export default function AdForm({ adId }: AdFormProps) {
     </Card>
   );
 }
-
-    

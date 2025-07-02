@@ -7,7 +7,7 @@ import AdCard from '@/components/ads/AdCard';
 import AdFilters, { type Filters as AdFiltersType } from '@/components/ads/AdFilters';
 import PaginationControls from '@/components/shared/PaginationControls';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import type { AdvertisementResponseDto, Page, AdvertisementSearchCriteriaDto } from '@/types/api';
+import type { AdvertisementResponseDto, PageResponseDto, AdvertisementSearchCriteriaDto } from '@/types/api';
 import { searchAds } from '@/lib/mockApi';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
@@ -22,7 +22,7 @@ export default function HomePageClient() {
   const searchParams = useSearchParams();
   const { token } = useAuth();
 
-  const [adsPage, setAdsPage] = useState<Page<AdvertisementResponseDto> | null>(null);
+  const [adsPage, setAdsPage] = useState<PageResponseDto<AdvertisementResponseDto> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -135,7 +135,7 @@ export default function HomePageClient() {
               currentPage={adsPage.number}
               totalPages={adsPage.totalPages}
               onPageChange={handlePageChange}
-              hasNextPage={adsPage.number < adsPage.totalPages - 1}
+              hasNextPage={!adsPage.last}
               hasPrevPage={adsPage.number > 0}
             />
           )}

@@ -13,7 +13,7 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { Edit, Mail, Phone, MapPin, CalendarCheck2, PackageSearch, Settings, ListChecks } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import type { AdvertisementResponseDto, Page, AdvertisementSearchCriteriaDto } from '@/types/api';
+import type { AdvertisementResponseDto, PageResponseDto, AdvertisementSearchCriteriaDto } from '@/types/api';
 import { searchAds } from '@/lib/mockApi';
 import AdCard from '@/components/ads/AdCard';
 import PaginationControls from '@/components/shared/PaginationControls';
@@ -21,7 +21,7 @@ import PaginationControls from '@/components/shared/PaginationControls';
 const ADS_PER_PAGE = 8;
 
 function UserAdsSection({ userId }: { userId: number }) {
-  const [adsPage, setAdsPage] = useState<Page<AdvertisementResponseDto> | null>(null);
+  const [adsPage, setAdsPage] = useState<PageResponseDto<AdvertisementResponseDto> | null>(null);
   const [isLoadingAds, setIsLoadingAds] = useState(true);
   const [adsError, setAdsError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -76,7 +76,7 @@ function UserAdsSection({ userId }: { userId: number }) {
             currentPage={adsPage.number}
             totalPages={adsPage.totalPages}
             onPageChange={handlePageChange}
-            hasNextPage={adsPage.number < adsPage.totalPages - 1}
+            hasNextPage={!adsPage.last}
             hasPrevPage={adsPage.number > 0}
         />
       )}
