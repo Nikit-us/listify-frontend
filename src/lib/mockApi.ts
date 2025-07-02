@@ -20,31 +20,26 @@ import type {
   ApiError,
 } from '@/types/api';
 
-const API_BASE_URL_FROM_ENV = process.env.NEXT_PUBLIC_API_BASE_URL;
-const FALLBACK_API_BASE_URL = 'http://listify-app.site';
+// The base URL for client-side fetch requests.
+// It's an empty string because we are using Next.js rewrites to proxy the requests.
+// This avoids CORS issues during development.
+const API_FETCH_BASE_URL = '';
 
-const isValidApiBaseUrl = (url?: string): boolean => {
-  if (!url || url.trim() === "" || url.toLowerCase() === "undefined") {
-    return false;
-  }
-  try {
-    new URL(url);
-    return true;
-  } catch (e) {
-    console.warn(`[mockApi] Предоставленный API_BASE_URL "${url}" не является валидным URL.`);
-    return false;
-  }
-};
+// The real, external base URL of the API.
+// Used for constructing absolute image URLs, as rewrites don't apply to image `src` attributes.
+const EXTERNAL_API_HOST = 'http://listify-app.site';
 
-const API_BASE_URL = (isValidApiBaseUrl(API_BASE_URL_FROM_ENV) ? API_BASE_URL_FROM_ENV : FALLBACK_API_BASE_URL)?.replace(/\/$/, '');
-console.log(`[mockApi] API_BASE_URL configured to: ${API_BASE_URL}`);
+console.log(`[mockApi] API fetch requests will be proxied via Next.js rewrites to ${EXTERNAL_API_HOST}.`);
+console.log(`[mockApi] Absolute image URLs will be constructed with host: ${EXTERNAL_API_HOST}`);
+
 
 const toAbsoluteImageUrl = (relativePath?: string): string | undefined => {
   if (!relativePath) return undefined;
   if (relativePath.startsWith('http://') || relativePath.startsWith('https://') || relativePath.startsWith('data:')) {
     return relativePath;
   }
-  return `${API_BASE_URL}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`;
+  // Use the external host for images
+  return `${EXTERNAL_API_HOST}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`;
 };
 
 const handleApiError = async (response: Response, url: string): Promise<Error> => {
@@ -60,6 +55,8 @@ const handleApiError = async (response: Response, url: string): Promise<Error> =
     }
   } catch (e) {
     // If parsing JSON fails, use the original generic message.
+    // This can happen for 5xx errors that return HTML pages instead of JSON.
+     errorMessage = `Ошибка сервера (статус ${response.status}) или неверный формат ответа от ${url}.`;
   }
   console.error(`[mockApi] ${errorMessage}`);
   return new Error(errorMessage);
@@ -69,7 +66,7 @@ const handleApiError = async (response: Response, url: string): Promise<Error> =
 // --- Locations ---
 
 export const getRegions = async (): Promise<RegionDto[]> => {
-  const url = `${API_BASE_URL}/api/locations/regions`;
+  const url = `${API_FETCH_BASE_URL}/api/locations/regions`;
   console.log(`[mockApi] Fetching regions from: ${url}`);
   try {
     const response = await fetch(url);
@@ -82,7 +79,7 @@ export const getRegions = async (): Promise<RegionDto[]> => {
 };
 
 export const getDistrictsByRegion = async (regionId: number): Promise<DistrictDto[]> => {
-  const url = `${API_BASE_URL}/api/locations/districts?regionId=${regionId}`;
+  const url = `${API_FETCH_BASE_URL}/api/locations/districts?regionId=${regionId}`;
   console.log(`[mockApi] Fetching districts for region ${regionId} from: ${url}`);
   try {
     const response = await fetch(url);
@@ -95,7 +92,7 @@ export const getDistrictsByRegion = async (regionId: number): Promise<DistrictDt
 };
 
 export const getCitiesByDistrict = async (districtId: number): Promise<CityDto[]> => {
-  const url = `${API_BASE_URL}/api/locations/cities?districtId=${districtId}`;
+  const url = `${API_FETCH_BASE_URL}/api/locations/cities?districtId=${districtId}`;
   console.log(`[mockApi] Fetching cities for district ${districtId} from: ${url}`);
   try {
     const response = await fetch(url);
@@ -111,7 +108,7 @@ export const getCitiesByDistrict = async (districtId: number): Promise<CityDto[]
 // --- Categories ---
 
 export const getCategoriesAsTree = async (): Promise<CategoryTreeDto[]> => {
-  const url = `${API_BASE_URL}/api/categories/tree`;
+  const url = `${API_FETCH_BASE_URL}/api/categories/tree`;
   console.log(`[mockApi] Fetching category tree from: ${url}`);
   try {
     const response = await fetch(url);
@@ -124,7 +121,7 @@ export const getCategoriesAsTree = async (): Promise<CategoryTreeDto[]> => {
 };
 
 export const getCategories = async (): Promise<CategoryDto[]> => {
-  const url = `${API_BASE_URL}/api/categories`;
+  const url = `${API_FETCH_BASE_URL}/api/categories`;
   console.log(`[mockApi] Fetching flat categories from: ${url}`);
   try {
     const response = await fetch(url);
@@ -151,7 +148,7 @@ export const searchAds = async (
   });
 
   const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
-  const url = `${API_BASE_URL}/api/ads/search?${queryParams.toString()}`;
+  const url = `${API_FETCH_BASE_URL}/api/ads/search?${queryParams.toString()}`;
   console.log(`[mockApi] Searching ads with URL: ${url} and token: ${token ? 'Present' : 'Absent'}`);
 
   try {
@@ -167,7 +164,7 @@ export const searchAds = async (
 };
 
 export const getAdById = async (id: number): Promise<AdvertisementDetailDto | null> => {
-  const url = `${API_BASE_URL}/api/ads/${id}`;
+  const url = `${API_FETCH_BASE_URL}/api/ads/${id}`;
   console.log(`[mockApi] Fetching ad by ID ${id} from: ${url}`);
   try {
     const response = await fetch(url);
@@ -192,7 +189,7 @@ export const createAd = async (data: AdvertisementCreateDto, images: File[] | un
   }
 
   const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
-  const url = `${API_BASE_URL}/api/ads`;
+  const url = `${API_FETCH_BASE_URL}/api/ads`;
   console.log(`[mockApi] Attempting to create ad at: ${url} with token: ${token ? 'Present' : 'Absent'}`);
   try {
     const response = await fetch(url, { method: 'POST', body: formData, headers });
@@ -215,7 +212,7 @@ export const updateAd = async (id: number, data: AdvertisementUpdateDto, newImag
   }
 
   const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
-  const url = `${API_BASE_URL}/api/ads/${id}`;
+  const url = `${API_FETCH_BASE_URL}/api/ads/${id}`;
   console.log(`[mockApi] Attempting to update ad ${id} at: ${url} with token: ${token ? 'Present' : 'Absent'}`);
   try {
     const response = await fetch(url, { method: 'PUT', body: formData, headers });
@@ -231,7 +228,7 @@ export const updateAd = async (id: number, data: AdvertisementUpdateDto, newImag
 
 export const deleteAd = async (adId: number, token: string): Promise<void> => {
   const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
-  const url = `${API_BASE_URL}/api/ads/${adId}`;
+  const url = `${API_FETCH_BASE_URL}/api/ads/${adId}`;
   console.log(`[mockApi] Attempting to delete ad ${adId} at: ${url} with token: ${token ? 'Present' : 'Absent'}`);
   try {
     const response = await fetch(url, { method: 'DELETE', headers });
@@ -246,7 +243,7 @@ export const deleteAd = async (adId: number, token: string): Promise<void> => {
 // --- Auth & Users ---
 
 export const login = async (credentials: LoginRequestDto): Promise<JwtResponseDto> => {
-  const url = `${API_BASE_URL}/api/auth/login`;
+  const url = `${API_FETCH_BASE_URL}/api/auth/login`;
   console.log(`[mockApi] Attempting login for ${credentials.email} at: ${url}`);
   try {
     const response = await fetch(url, {
@@ -269,7 +266,7 @@ export const register = async (data: UserRegistrationDto, avatar?: File): Promis
     formData.append('avatar', avatar, avatar.name);
   }
 
-  const url = `${API_BASE_URL}/api/auth/register`;
+  const url = `${API_FETCH_BASE_URL}/api/auth/register`;
   console.log(`[mockApi] Attempting registration for ${data.email} at: ${url}`);
   try {
     const response = await fetch(url, { method: 'POST', body: formData });
@@ -285,7 +282,7 @@ export const register = async (data: UserRegistrationDto, avatar?: File): Promis
 
 export const getCurrentUserProfile = async (token: string): Promise<UserProfileDto | null> => {
   const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
-  const url = `${API_BASE_URL}/api/users/me`;
+  const url = `${API_FETCH_BASE_URL}/api/users/me`;
   console.log(`[mockApi] Fetching current user profile from: ${url} with token: ${token ? 'Present' : 'Absent'}`);
   try {
     const response = await fetch(url, { headers });
@@ -310,7 +307,7 @@ export const updateUserProfile = async (data: UserUpdateProfileDto, avatar: File
   }
 
   const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
-  const url = `${API_BASE_URL}/api/users/me`;
+  const url = `${API_FETCH_BASE_URL}/api/users/me`;
   console.log(`[mockApi] Attempting to update user profile at: ${url} with token: ${token ? 'Present' : 'Absent'}`);
   try {
     const response = await fetch(url, { method: 'PUT', body: formData, headers });
@@ -326,7 +323,7 @@ export const updateUserProfile = async (data: UserUpdateProfileDto, avatar: File
 
 export const getUserProfile = async (userId: number, token?: string | null): Promise<UserProfileDto | null> => {
   const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
-  const url = `${API_BASE_URL}/api/users/${userId}`;
+  const url = `${API_FETCH_BASE_URL}/api/users/${userId}`;
   console.log(`[mockApi] Fetching user profile for ${userId} from: ${url}`);
   try {
     const response = await fetch(url, { headers });
@@ -349,7 +346,7 @@ export const getUserProfile = async (userId: number, token?: string | null): Pro
 // It assumes `/api/locations/cities` without a districtId returns all cities.
 // This might need adjustment if the API doesn't support it.
 export const getAllCitiesFlat = async (): Promise<CityDto[]> => {
-  const url = `${API_BASE_URL}/api/locations/cities`; 
+  const url = `${API_FETCH_BASE_URL}/api/locations/cities`; 
   console.log(`[mockApi] Fetching all cities (flat) from: ${url}`);
   try {
     const response = await fetch(url);
