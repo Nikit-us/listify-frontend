@@ -9,7 +9,7 @@ const remotePatternsConfig = [
     pathname: '/**',
   },
   {
-    protocol: 'http',
+    protocol: 'https',
     hostname: 'listify-app.site',
     port: '',
     pathname: '/uploads/**',
@@ -19,7 +19,7 @@ const remotePatternsConfig = [
 const apiBaseUrlFromEnv = process.env.NEXT_PUBLIC_API_BASE_URL;
 if (apiBaseUrlFromEnv) {
   try {
-    const envUrl = new URL(apiBase_url_from_env);
+    const envUrl = new URL(apiBaseUrlFromEnv);
     if (envUrl.hostname && envUrl.hostname !== 'listify-app.site') {
       remotePatternsConfig.push({
         protocol: envUrl.protocol.replace(':', '') as 'http' | 'https',
@@ -47,7 +47,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://listify-app.site/api/:path*',
+        destination: 'https://listify-app.site/api/:path*',
       },
     ]
   },
