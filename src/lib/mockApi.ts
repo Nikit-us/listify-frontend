@@ -27,7 +27,7 @@ const API_FETCH_BASE_URL = '';
 
 // The real, external base URL of the API.
 // Used for constructing absolute image URLs, as rewrites don't apply to image `src` attributes.
-const EXTERNAL_API_HOST = 'https://listify-app.site';
+const EXTERNAL_API_HOST = 'http://listify-app.site';
 
 console.log(`[mockApi] API fetch requests will be proxied via Next.js rewrites to ${EXTERNAL_API_HOST}.`);
 console.log(`[mockApi] Absolute image URLs will be constructed with host: ${EXTERNAL_API_HOST}`);

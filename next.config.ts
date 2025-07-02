@@ -9,7 +9,7 @@ const remotePatternsConfig = [
     pathname: '/**',
   },
   {
-    protocol: 'https',
+    protocol: 'http',
     hostname: 'listify-app.site',
     port: '',
     pathname: '/uploads/**',
@@ -47,7 +47,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://listify-app.site/api/:path*',
+        destination: 'http://listify-app.site/api/:path*',
       },
     ]
   },
