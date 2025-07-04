@@ -336,7 +336,7 @@ export const updateUserProfile = async (data: UserUpdateProfileDto, avatar: File
 
 export const getUserProfile = async (userId: number, token?: string | null): Promise<UserProfileDto | null> => {
   const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
-  const url = `${API_BASE_URL}/api/users/${userId}`;
+  const url = `${API_BASE_URL}/api/users/${userId}/profile`;
   console.log(`[mockApi] Fetching user profile for ${userId} from: ${url}`);
   try {
     const response = await fetch(url, { headers });
