@@ -78,15 +78,15 @@ const handleApiError = async (response: Response, url: string): Promise<Error> =
 const handleFetchError = (error: unknown, url: string, context: string): Error => {
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
         const helpfulError = new Error(
-            `Не удалось выполнить запрос для "${context}" (Ошибка: Failed to fetch). ` +
-            'Возможные причины: проблема с сетью, API-сервер недоступен, или ошибка CORS. ' +
-            'Убедитесь, что ваш API-сервер корректно обрабатывает ' +
-            'предварительные запросы (preflight requests) методом OPTIONS для URL: ' + url
+            `Сетевая ошибка "Failed to fetch" при запросе "${context}" на URL: ${url}. ` +
+            'Это почти всегда означает, что предварительный запрос (CORS Preflight OPTIONS) не прошел. ' +
+            'Браузер не получил от сервера разрешение на отправку основного запроса. ' +
+            'Проверьте конфигурацию CORS на вашем сервере, особенно для метода OPTIONS.'
         );
         console.error(`[mockApi] ${helpfulError.message}`);
         return helpfulError;
     }
-    console.error(`[mockApi] Сетевая ошибка или неверный URL при получении ${context} из ${url}:`, error);
+    console.error(`[mockApi] Неизвестная сетевая ошибка или неверный URL при получении ${context} из ${url}:`, error);
     return new Error(`Сетевая ошибка при получении "${context}". Исходная ошибка: ${(error as Error).message}`);
 };
 
