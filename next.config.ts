@@ -22,14 +22,8 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: apiUrl.protocol.replace(':', ''), // 'http' или 'https'
-        hostname: apiUrl.hostname, // 'localhost' или домен вашего API
-        port: apiUrl.port || '', // '8080' или пустая строка
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'listify-app.site',
-        port: '',
+        hostname: apiUrl.hostname, // домен вашего API, например 'listify-app.site' или 'localhost'
+        port: apiUrl.port || '', // порт, например '8080' или пустая строка
         pathname: '/uploads/**',
       },
     ],
