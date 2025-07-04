@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Home, PlusCircle, User, LogIn, LogOut, ListChecks } from 'lucide-react';
+import { Home, PlusCircle, User, LogIn, LogOut, ListChecks, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Navbar() {
   const { isAuthenticated, user, logout, isLoading } = useAuth();
+  const isAdmin = user?.roles?.includes('ROLE_ADMIN');
 
   return (
     <header className="bg-card shadow-md sticky top-0 z-50">
@@ -62,6 +63,14 @@ export default function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                   {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin">
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        Админ-панель
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link href="/profile/me">
                       <User className="mr-2 h-4 w-4" />

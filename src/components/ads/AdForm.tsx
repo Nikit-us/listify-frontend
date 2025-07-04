@@ -46,6 +46,7 @@ const adSchema = z.object({
   districtId: z.string().optional(),
   cityId: z.coerce.number({invalid_type_error: 'Выберите город.'}).min(1, { message: 'Выберите город.' }),
   condition: z.enum(['NEW', 'USED_PERFECT', 'USED_GOOD', 'USED_FAIR'], { required_error: 'Укажите состояние товара.' }),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'SOLD']).optional(),
 });
 
 type AdFormValues = z.infer<typeof adSchema>;
@@ -59,6 +60,12 @@ const conditionOptions = [
   { value: 'USED_PERFECT', label: 'Б/у, идеальное' },
   { value: 'USED_GOOD', label: 'Б/у, хорошее' },
   { value: 'USED_FAIR', label: 'Б/у, удовлетворительное' },
+];
+
+const statusOptions = [
+    { value: 'ACTIVE', label: 'Активно' },
+    { value: 'INACTIVE', label: 'Неактивно' },
+    { value: 'SOLD', label: 'Продано' },
 ];
 
 export default function AdForm({ adId }: AdFormProps) {
@@ -92,6 +99,7 @@ export default function AdForm({ adId }: AdFormProps) {
       districtId: undefined,
       cityId: undefined,
       condition: undefined,
+      status: 'ACTIVE',
     },
   });
 
@@ -129,6 +137,7 @@ export default function AdForm({ adId }: AdFormProps) {
             categoryId: adData.categoryId,
             cityId: adData.cityId,
             condition: adData.condition,
+            status: adData.status,
           });
           setExistingImages(adData.images.map(img => ({ id: img.id, url: img.imageUrl })));
           setNewlySelectedImages([]);
@@ -207,24 +216,30 @@ export default function AdForm({ adId }: AdFormProps) {
 
     try {
       let savedAd: AdvertisementDetailDto;
-      const basePayload: AdvertisementCreateDto = {
-        title: data.title,
-        description: data.description,
-        price: Number(data.price),
-        categoryId: Number(data.categoryId),
-        cityId: Number(data.cityId),
-        condition: data.condition,
-      };
-
+      
       if (adId) {
         const updatePayload: AdvertisementUpdateDto = {
-            ...basePayload,
+            title: data.title,
+            description: data.description,
+            price: Number(data.price),
+            categoryId: Number(data.categoryId),
+            cityId: Number(data.cityId),
+            condition: data.condition,
+            status: data.status,
             imageIdsToDelete: removedExistingImageIds.length > 0 ? removedExistingImageIds : undefined,
         };
         savedAd = await updateAd(adId, updatePayload, newlySelectedImages.length > 0 ? newlySelectedImages : undefined, token);
         toast({ title: "Успех!", description: "Объявление успешно обновлено." });
       } else {
-        savedAd = await createAd(basePayload, newlySelectedImages.length > 0 ? newlySelectedImages : undefined, token);
+        const createPayload: AdvertisementCreateDto = {
+            title: data.title,
+            description: data.description,
+            price: Number(data.price),
+            categoryId: Number(data.categoryId),
+            cityId: Number(data.cityId),
+            condition: data.condition,
+        };
+        savedAd = await createAd(createPayload, newlySelectedImages.length > 0 ? newlySelectedImages : undefined, token);
         toast({ title: "Успех!", description: "Объявление успешно создано." });
       }
       router.push(`/ads/${savedAd.id}`);
@@ -409,6 +424,28 @@ export default function AdForm({ adId }: AdFormProps) {
                 </FormItem>
               )}
             />
+            {adId && (
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Статус объявления</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Выберите статус" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {statusOptions.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormItem>
               <FormLabel>Изображения (до 5)</FormLabel>
                <ImageUpload

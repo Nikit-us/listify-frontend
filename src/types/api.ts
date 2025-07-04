@@ -168,3 +168,17 @@ export interface AdvertisementSearchCriteriaDto {
   size?: number;
   sort?: string;
 }
+
+// --- Admin Panel Specific Types ---
+export type HitStatisticsDto = Record<string, number>;
+
+export interface LogTaskRequestDto {
+  taskId: string;
+  message: string;
+  statusUrl: string;
+}
+
+export interface LogTaskStatusDto {
+  taskId: string;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'NOT_FOUND';
+}

@@ -18,6 +18,10 @@ import type {
   DistrictDto,
   AdvertisementSearchCriteriaDto,
   ApiError,
+  HitStatisticsDto,
+  LogTaskRequestDto,
+  LogTaskStatusDto,
+  CategoryCreateDto
 } from '@/types/api';
 
 // The base URL for client-side fetch requests.
@@ -27,7 +31,7 @@ const API_FETCH_BASE_URL = '';
 
 // The real, external base URL of the API.
 // Used for constructing absolute image URLs, as rewrites don't apply to image `src` attributes.
-const EXTERNAL_API_HOST = 'https://listify-app.site';
+const EXTERNAL_API_HOST = 'http://listify-app.site';
 
 console.log(`[mockApi] API fetch requests will be proxied via Next.js rewrites to ${EXTERNAL_API_HOST}.`);
 console.log(`[mockApi] Absolute image URLs will be constructed with host: ${EXTERNAL_API_HOST}`);
@@ -338,6 +342,98 @@ export const getUserProfile = async (userId: number, token?: string | null): Pro
     console.error(`[mockApi] Сетевая ошибка при получении профиля пользователя ${userId} из ${url}:`, error);
     throw new Error(`Сетевая ошибка при получении профиля пользователя ${userId}. Исходная ошибка: ${(error as Error).message}`);
   }
+};
+
+// --- Admin Functions ---
+export const getHitStatistics = async (token: string): Promise<HitStatisticsDto> => {
+    const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
+    const url = `${API_FETCH_BASE_URL}/api/admin/hits`;
+    console.log(`[mockApi] Fetching hit statistics from: ${url}`);
+    try {
+        const response = await fetch(url, { headers });
+        if (!response.ok) throw await handleApiError(response, url);
+        return response.json();
+    } catch (error) {
+        console.error(`[mockApi] Error fetching hit statistics:`, error);
+        throw new Error(`Сетевая ошибка при получении статистики. Исходная ошибка: ${(error as Error).message}`);
+    }
+};
+
+export const generateLogReport = async (token: string, date?: string): Promise<LogTaskRequestDto> => {
+    const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
+    const url = new URL(`${API_FETCH_BASE_URL}/api/admin/logs/tasks/generate`);
+    if (date) {
+        url.searchParams.append('date', date);
+    }
+    console.log(`[mockApi] Requesting log generation from: ${url.toString()}`);
+    try {
+        const response = await fetch(url.toString(), { method: 'POST', headers });
+        if (!response.ok) throw await handleApiError(response, url.toString());
+        return response.json();
+    } catch (error) {
+        console.error(`[mockApi] Error requesting log generation:`, error);
+        throw new Error(`Сетевая ошибка при запросе генерации логов. Исходная ошибка: ${(error as Error).message}`);
+    }
+};
+
+export const getLogTaskStatus = async (token: string, taskId: string): Promise<LogTaskStatusDto> => {
+    const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
+    const url = `${API_FETCH_BASE_URL}/api/admin/logs/tasks/${taskId}/status`;
+    console.log(`[mockApi] Fetching log task status from: ${url}`);
+    try {
+        const response = await fetch(url, { headers });
+        if (!response.ok) throw await handleApiError(response, url);
+        return response.json();
+    } catch (error) {
+        console.error(`[mockApi] Error fetching log task status:`, error);
+        throw new Error(`Сетевая ошибка при получении статуса задачи. Исходная ошибка: ${(error as Error).message}`);
+    }
+};
+
+export const downloadGeneratedLog = async (token: string, taskId: string): Promise<Blob> => {
+    const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
+    const url = `${API_FETCH_BASE_URL}/api/admin/logs/tasks/${taskId}/download`;
+    console.log(`[mockApi] Downloading generated log from: ${url}`);
+    try {
+        const response = await fetch(url, { headers });
+        if (!response.ok) throw await handleApiError(response, url);
+        return response.blob();
+    } catch (error) {
+        console.error(`[mockApi] Error downloading generated log:`, error);
+        throw new Error(`Сетевая ошибка при скачивании файла логов. Исходная ошибка: ${(error as Error).message}`);
+    }
+};
+
+export const downloadArchivedLog = async (token: string, date: string): Promise<Blob> => {
+    const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
+    const url = new URL(`${API_FETCH_BASE_URL}/api/admin/logs/download`);
+    url.searchParams.append('date', date);
+    console.log(`[mockApi] Downloading archived log from: ${url.toString()}`);
+    try {
+        const response = await fetch(url.toString(), { headers });
+        if (!response.ok) throw await handleApiError(response, url.toString());
+        return response.blob();
+    } catch (error) {
+        console.error(`[mockApi] Error downloading archived log:`, error);
+        throw new Error(`Сетевая ошибка при скачивании архивного лога. Исходная ошибка: ${(error as Error).message}`);
+    }
+};
+
+export const createCategories = async (token: string, data: CategoryCreateDto[]): Promise<CategoryDto[]> => {
+    const headers: HeadersInit = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+    };
+    const url = `${API_FETCH_BASE_URL}/api/categories`;
+    console.log(`[mockApi] Creating categories at: ${url}`);
+    try {
+        const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(data) });
+        if (!response.ok) throw await handleApiError(response, url);
+        return response.json();
+    } catch (error) {
+        console.error(`[mockApi] Error creating categories:`, error);
+        throw new Error(`Сетевая ошибка при создании категорий. Исходная ошибка: ${(error as Error).message}`);
+    }
 };
 
 
