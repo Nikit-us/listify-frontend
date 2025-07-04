@@ -46,7 +46,9 @@ const toAbsoluteImageUrl = (relativePath?: string): string | undefined => {
   if (relativePath.startsWith('http://') || relativePath.startsWith('https://') || relativePath.startsWith('data:')) {
     return relativePath;
   }
-  return `${API_BASE_URL}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`;
+  // Используем URL из переменных окружения для построения абсолютного пути
+  const publicApiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || API_BASE_URL;
+  return `${publicApiUrl}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`;
 };
 
 const handleApiError = async (response: Response, url: string): Promise<Error> => {
@@ -73,6 +75,21 @@ const handleApiError = async (response: Response, url: string): Promise<Error> =
   return new Error(errorMessage);
 };
 
+const handleFetchError = (error: unknown, url: string, context: string): Error => {
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        const helpfulError = new Error(
+            `Не удалось выполнить запрос для "${context}" (Ошибка: Failed to fetch). ` +
+            'Возможные причины: проблема с сетью, API-сервер недоступен, или ошибка CORS. ' +
+            'Убедитесь, что ваш API-сервер корректно обрабатывает ' +
+            'предварительные запросы (preflight requests) методом OPTIONS для URL: ' + url
+        );
+        console.error(`[mockApi] ${helpfulError.message}`);
+        return helpfulError;
+    }
+    console.error(`[mockApi] Сетевая ошибка или неверный URL при получении ${context} из ${url}:`, error);
+    return new Error(`Сетевая ошибка при получении "${context}". Исходная ошибка: ${(error as Error).message}`);
+};
+
 
 // --- Locations ---
 
@@ -84,8 +101,7 @@ export const getRegions = async (): Promise<RegionDto[]> => {
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка или неверный URL при получении регионов из ${url}:`, error);
-    throw new Error(`Сетевая ошибка при получении регионов. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, "регионов");
   }
 };
 
@@ -97,8 +113,7 @@ export const getDistrictsByRegion = async (regionId: number): Promise<DistrictDt
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка или неверный URL при получении районов для региона ${regionId} из ${url}:`, error);
-    throw new Error(`Сетевая ошибка при получении районов. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, `районов для региона ${regionId}`);
   }
 };
 
@@ -110,8 +125,7 @@ export const getCitiesByDistrict = async (districtId: number): Promise<CityDto[]
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка или неверный URL при получении городов для района ${districtId} из ${url}:`, error);
-    throw new Error(`Сетевая ошибка при получении городов. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, `городов для района ${districtId}`);
   }
 };
 
@@ -126,8 +140,7 @@ export const getCategoriesAsTree = async (): Promise<CategoryTreeDto[]> => {
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка или неверный URL при получении дерева категорий из ${url}:`, error);
-    throw new Error(`Сетевая ошибка при получении дерева категорий. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, "дерева категорий");
   }
 };
 
@@ -139,8 +152,7 @@ export const getCategories = async (): Promise<CategoryDto[]> => {
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка или неверный URL при получении категорий из ${url}:`, error);
-    throw new Error(`Сетевая ошибка при получении категорий. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, "категорий");
   }
 };
 
@@ -169,8 +181,7 @@ export const searchAds = async (
     data.content = data.content.map(ad => ({ ...ad, previewImageUrl: toAbsoluteImageUrl(ad.previewImageUrl) }));
     return data;
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка при поиске объявлений из ${url}:`, error);
-    throw new Error(`Сетевая ошибка при поиске объявлений. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, "поиска объявлений");
   }
 };
 
@@ -187,8 +198,7 @@ export const getAdById = async (id: number): Promise<AdvertisementDetailDto | nu
     ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
     return ad;
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка при получении объявления ${id} из ${url}:`, error);
-    throw new Error(`Сетевая ошибка при получении объявления ${id}. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, `объявления ${id}`);
   }
 };
 
@@ -209,8 +219,7 @@ export const createAd = async (data: AdvertisementCreateDto, images: File[] | un
     ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
     return ad;
   } catch (error) {
-     console.error(`[mockApi] Сетевая ошибка при создании объявления на ${url}:`, error);
-    throw new Error(`Сетевая ошибка при создании объявления. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, "создания объявления");
   }
 };
 
@@ -232,8 +241,7 @@ export const updateAd = async (id: number, data: AdvertisementUpdateDto, newImag
     ad.images = ad.images.map(img => ({ ...img, imageUrl: toAbsoluteImageUrl(img.imageUrl)! }));
     return ad;
   } catch (error) {
-     console.error(`[mockApi] Сетевая ошибка при обновлении объявления ${id} на ${url}:`, error);
-    throw new Error(`Сетевая ошибка при обновлении объявления ${id}. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, `обновления объявления ${id}`);
   }
 };
 
@@ -247,8 +255,7 @@ export const deleteAd = async (adId: number, token: string): Promise<void> => {
         throw await handleApiError(response, url);
     }
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка при удалении объявления ${adId} на ${url}:`, error);
-    throw new Error(`Сетевая ошибка при удалении объявления ${adId}. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, `удаления объявления ${adId}`);
   }
 };
 
@@ -267,8 +274,7 @@ export const login = async (credentials: LoginRequestDto): Promise<JwtResponseDt
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка во время входа на ${url}:`, error);
-    throw new Error(`Сетевая ошибка во время входа. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, "входа в систему");
   }
 };
 
@@ -288,8 +294,7 @@ export const register = async (data: UserRegistrationDto, avatar?: File): Promis
     userResponse.avatarUrl = toAbsoluteImageUrl(userResponse.avatarUrl);
     return userResponse;
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка во время регистрации на ${url}:`, error);
-    throw new Error(`Сетевая ошибка во время регистрации. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, "регистрации");
   }
 };
 
@@ -307,8 +312,7 @@ export const getCurrentUserProfile = async (token: string): Promise<UserProfileD
     profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl)!;
     return profile;
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка при получении текущего профиля пользователя из ${url}:`, error);
-    throw new Error(`Сетевая ошибка при получении текущего профиля пользователя. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, "текущего профиля пользователя");
   }
 };
 
@@ -329,8 +333,7 @@ export const updateUserProfile = async (data: UserUpdateProfileDto, avatar: File
     profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl)!;
     return profile;
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка при обновлении профиля на ${url}:`, error);
-    throw new Error(`Сетевая ошибка при обновлении профиля. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, "обновления профиля");
   }
 };
 
@@ -348,8 +351,7 @@ export const getUserProfile = async (userId: number, token?: string | null): Pro
     profile.avatarUrl = toAbsoluteImageUrl(profile.avatarUrl)!;
     return profile;
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка при получении профиля пользователя ${userId} из ${url}:`, error);
-    throw new Error(`Сетевая ошибка при получении профиля пользователя ${userId}. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, `профиля пользователя ${userId}`);
   }
 };
 
@@ -363,8 +365,7 @@ export const getHitStatistics = async (token: string): Promise<HitStatisticsDto>
         if (!response.ok) throw await handleApiError(response, url);
         return response.json();
     } catch (error) {
-        console.error(`[mockApi] Error fetching hit statistics:`, error);
-        throw new Error(`Сетевая ошибка при получении статистики. Исходная ошибка: ${(error as Error).message}`);
+        throw handleFetchError(error, url, "статистики посещений");
     }
 };
 
@@ -380,8 +381,7 @@ export const generateLogReport = async (token: string, date?: string): Promise<L
         if (!response.ok) throw await handleApiError(response, url.toString());
         return response.json();
     } catch (error) {
-        console.error(`[mockApi] Error requesting log generation:`, error);
-        throw new Error(`Сетевая ошибка при запросе генерации логов. Исходная ошибка: ${(error as Error).message}`);
+        throw handleFetchError(error, url.toString(), "генерации отчета логов");
     }
 };
 
@@ -394,8 +394,7 @@ export const getLogTaskStatus = async (token: string, taskId: string): Promise<L
         if (!response.ok) throw await handleApiError(response, url);
         return response.json();
     } catch (error) {
-        console.error(`[mockApi] Error fetching log task status:`, error);
-        throw new Error(`Сетевая ошибка при получении статуса задачи. Исходная ошибка: ${(error as Error).message}`);
+        throw handleFetchError(error, url, `статуса задачи логов ${taskId}`);
     }
 };
 
@@ -408,8 +407,7 @@ export const downloadGeneratedLog = async (token: string, taskId: string): Promi
         if (!response.ok) throw await handleApiError(response, url);
         return response.blob();
     } catch (error) {
-        console.error(`[mockApi] Error downloading generated log:`, error);
-        throw new Error(`Сетевая ошибка при скачивании файла логов. Исходная ошибка: ${(error as Error).message}`);
+        throw handleFetchError(error, url, `скачивания сгенерированного лога ${taskId}`);
     }
 };
 
@@ -423,8 +421,7 @@ export const downloadArchivedLog = async (token: string, date: string): Promise<
         if (!response.ok) throw await handleApiError(response, url.toString());
         return response.blob();
     } catch (error) {
-        console.error(`[mockApi] Error downloading archived log:`, error);
-        throw new Error(`Сетевая ошибка при скачивании архивного лога. Исходная ошибка: ${(error as Error).message}`);
+        throw handleFetchError(error, url.toString(), `скачивания архивного лога за ${date}`);
     }
 };
 
@@ -442,8 +439,7 @@ export const createCategories = async (token: string, data: CategoryCreateDto[])
         }
         return response.json();
     } catch (error) {
-        console.error(`[mockApi] Error creating categories:`, error);
-        throw new Error(`Сетевая ошибка при создании категорий. Исходная ошибка: ${(error as Error).message}`);
+        throw handleFetchError(error, url, "создания категорий");
     }
 };
 
@@ -460,8 +456,7 @@ export const getAllCitiesFlat = async (): Promise<CityDto[]> => {
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
-    console.error(`[mockApi] Сетевая ошибка при получении всех городов из ${url}:`, error);
-    throw new Error(`Сетевая ошибка при получении всех городов. Исходная ошибка: ${(error as Error).message}`);
+    throw handleFetchError(error, url, "получения всех городов");
   }
 };
 
