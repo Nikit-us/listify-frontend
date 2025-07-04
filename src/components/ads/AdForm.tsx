@@ -244,8 +244,15 @@ export default function AdForm({ adId }: AdFormProps) {
       }
       router.push(`/ads/${savedAd.id}`);
     } catch (err) {
-      setFormError((err as Error).message || 'Произошла ошибка.');
-      toast({ variant: "destructive", title: "Ошибка", description: (err as Error).message || 'Не удалось сохранить объявление.' });
+      const error = err as Error;
+      console.error("ОШИБКА В AdForm:", error.message, error);
+      setFormError(error.message || 'Произошла ошибка.');
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: error.message || 'Не удалось сохранить объявление.',
+        duration: 15000,
+      });
     } finally {
       setIsLoading(false);
     }
