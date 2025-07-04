@@ -25,14 +25,14 @@ import type {
 } from '@/types/api';
 
 // The base URL for client-side fetch requests.
-// Using the full, direct URL to the backend. This will require the backend to have proper CORS configured.
-const API_FETCH_BASE_URL = 'http://listify-app.site';
+// Using a relative path so that requests are proxied by Next.js rewrites to avoid CORS.
+const API_FETCH_BASE_URL = ''; // Make requests relative to the current domain
 
 // The real, external base URL of the API.
-// Used for constructing absolute image URLs.
+// Used for constructing absolute image URLs, which are not proxied.
 const EXTERNAL_API_HOST = 'http://listify-app.site';
 
-console.log(`[mockApi] API fetch requests will be sent directly to ${API_FETCH_BASE_URL}.`);
+console.log(`[mockApi] API fetch requests will be sent to relative path ${API_FETCH_BASE_URL}/api. Check next.config.ts for proxy destination.`);
 console.log(`[mockApi] Absolute image URLs will be constructed with host: ${EXTERNAL_API_HOST}`);
 
 
@@ -235,7 +235,9 @@ export const deleteAd = async (adId: number, token: string): Promise<void> => {
   console.log(`[mockApi] Attempting to delete ad ${adId} at: ${url} with token: ${token ? 'Present' : 'Absent'}`);
   try {
     const response = await fetch(url, { method: 'DELETE', headers });
-    if (!response.ok) throw await handleApiError(response, url);
+    if (response.status !== 204 && !response.ok) { // Allow 204 No Content
+        throw await handleApiError(response, url);
+    }
   } catch (error) {
     console.error(`[mockApi] Сетевая ошибка при удалении объявления ${adId} на ${url}:`, error);
     throw new Error(`Сетевая ошибка при удалении объявления ${adId}. Исходная ошибка: ${(error as Error).message}`);
@@ -427,7 +429,9 @@ export const createCategories = async (token: string, data: CategoryCreateDto[])
     console.log(`[mockApi] Creating categories at: ${url}`);
     try {
         const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(data) });
-        if (!response.ok) throw await handleApiError(response, url);
+        if (response.status !== 201 && !response.ok) { // Allow 201 Created
+             throw await handleApiError(response, url);
+        }
         return response.json();
     } catch (error) {
         console.error(`[mockApi] Error creating categories:`, error);
