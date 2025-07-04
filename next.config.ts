@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://listify-app.site/api/:path*', // Proxy to HTTP backend
+        destination: 'http://localhost:8080/api/:path*', // Proxy to local HTTP backend
       },
     ];
   },
@@ -26,8 +26,8 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'http',
-        hostname: 'listify-app.site',
-        port: '',
+        hostname: 'localhost',
+        port: '8080',
         pathname: '/uploads/**',
       },
     ],

@@ -30,7 +30,7 @@ const API_FETCH_BASE_URL = '';
 
 // The real, external base URL of the API.
 // Used for constructing absolute image URLs, which are not proxied.
-const EXTERNAL_API_HOST = 'http://listify-app.site';
+const EXTERNAL_API_HOST = 'http://localhost:8080';
 
 console.log(`[mockApi] API fetch requests will be sent to relative path ${API_FETCH_BASE_URL}/api. Check next.config.ts for proxy destination.`);
 console.log(`[mockApi] Absolute image URLs will be constructed with host: ${EXTERNAL_API_HOST}`);
