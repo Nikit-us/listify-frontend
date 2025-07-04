@@ -25,15 +25,14 @@ import type {
 } from '@/types/api';
 
 // The base URL for client-side fetch requests.
-// It's an empty string because we are using Next.js rewrites to proxy the requests.
-// This avoids CORS issues during development.
-const API_FETCH_BASE_URL = '';
+// Using the full, direct URL to the backend. This will require the backend to have proper CORS configured.
+const API_FETCH_BASE_URL = 'http://listify-app.site';
 
 // The real, external base URL of the API.
-// Used for constructing absolute image URLs, as rewrites don't apply to image `src` attributes.
+// Used for constructing absolute image URLs.
 const EXTERNAL_API_HOST = 'http://listify-app.site';
 
-console.log(`[mockApi] API fetch requests will be proxied via Next.js rewrites to ${EXTERNAL_API_HOST}.`);
+console.log(`[mockApi] API fetch requests will be sent directly to ${API_FETCH_BASE_URL}.`);
 console.log(`[mockApi] Absolute image URLs will be constructed with host: ${EXTERNAL_API_HOST}`);
 
 

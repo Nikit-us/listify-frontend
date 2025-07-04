@@ -43,14 +43,6 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: remotePatternsConfig,
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://listify-app.site/api/:path*',
-      },
-    ]
-  },
 };
 
 export default nextConfig;
