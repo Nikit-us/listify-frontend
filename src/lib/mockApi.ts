@@ -26,7 +26,7 @@ import type {
 
 // The base URL for client-side fetch requests.
 // Using a relative path so that requests are proxied by Next.js rewrites to avoid CORS.
-const API_FETCH_BASE_URL = ''; // Make requests relative to the current domain
+const API_FETCH_BASE_URL = ''; 
 
 // The real, external base URL of the API.
 // Used for constructing absolute image URLs, which are not proxied.
@@ -46,6 +46,14 @@ const toAbsoluteImageUrl = (relativePath?: string): string | undefined => {
 };
 
 const handleApiError = async (response: Response, url: string): Promise<Error> => {
+  // Special case for login failure to provide a better UX.
+  // A 401 on the login endpoint should always mean "invalid credentials".
+  if (response.status === 401 && url.endsWith('/api/auth/login')) {
+    const specificLoginError = new Error('Неверный email или пароль.');
+    console.error(`[mockApi] Login failed (401): ${specificLoginError.message}`);
+    return specificLoginError;
+  }
+  
   let errorMessage = `Ошибка API. Статус: ${response.status}. URL: ${url}`;
   try {
     const errorData: ApiError = await response.json();
