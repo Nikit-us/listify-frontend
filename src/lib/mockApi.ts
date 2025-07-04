@@ -26,12 +26,19 @@ import type {
 
 
 // --- API Configuration ---
-// ВАЖНО: Измените эту переменную, чтобы указать на ваш API-сервер.
-const API_BASE_URL = 'http://localhost:8080';
+// URL вашего API. Теперь он берется из переменной окружения.
+// Вы можете изменить его в файле .env.local
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
-// Убедитесь, что ваш API-сервер настроен для приема запросов (CORS)
-// с домена, на котором работает это приложение (например, http://localhost:9002).
-console.log(`[mockApi] All API requests are configured to be sent to: ${API_BASE_URL}`);
+// Выводим предупреждение в консоль, если переменная не установлена,
+// чтобы помочь при отладке.
+if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
+  console.warn(
+    `[mockApi] ВНИМАНИЕ: переменная окружения NEXT_PUBLIC_API_BASE_URL не установлена. Используется значение по умолчанию: ${API_BASE_URL}`
+  );
+}
+
+console.log(`[mockApi] Все API запросы настроены для отправки на: ${API_BASE_URL}`);
 
 
 const toAbsoluteImageUrl = (relativePath?: string): string | undefined => {

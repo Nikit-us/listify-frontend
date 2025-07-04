@@ -1,6 +1,10 @@
 
 import type {NextConfig} from 'next';
 
+// Безопасно использовать process.env, так как next.config.js выполняется в среде Node.js
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+const apiUrl = new URL(apiBaseUrl);
+
 const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
@@ -17,9 +21,9 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '8080',
+        protocol: apiUrl.protocol.replace(':', ''), // 'http' или 'https'
+        hostname: apiUrl.hostname, // 'localhost' или домен вашего API
+        port: apiUrl.port || '', // '8080' или пустая строка
         pathname: '/uploads/**',
       },
     ],
