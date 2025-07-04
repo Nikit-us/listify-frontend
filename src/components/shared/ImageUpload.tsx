@@ -2,15 +2,17 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, FileRejection } from 'react-dropzone';
 import Image from 'next/image';
-import { UploadCloud, XCircle, FileImage } from 'lucide-react';
+import { UploadCloud, XCircle, FileImage, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 
 interface ImageUploadProps {
   onFilesChange: (files: File[]) => void;
   maxFiles?: number;
+  maxSize?: number; // Max size in bytes
   label?: string;
   existingImageUrls?: { id: string | number; url: string }[]; // For edit mode
   onRemoveExistingImage?: (id: string | number) => void; // For edit mode
@@ -18,9 +20,20 @@ interface ImageUploadProps {
   aspectRatio?: string; // e.g., 'aspect-video', 'aspect-square'
 }
 
+const formatBytes = (bytes: number, decimals = 2) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+};
+
+
 export default function ImageUpload({
   onFilesChange,
   maxFiles = 1,
+  maxSize = 5 * 1024 * 1024, // 5 MB
   label = "Загрузите изображения",
   existingImageUrls = [],
   onRemoveExistingImage,
@@ -29,38 +42,50 @@ export default function ImageUpload({
 }: ImageUploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  // Initialize currentExistingImages from the prop.
-  // If existingImageUrls prop changes later, this state won't automatically update
-  // unless ProfileForm explicitly manages and re-passes it, which it currently doesn't.
-  // For the current usage in ProfileForm, this is fine as it uses the default.
+  const [rejectionError, setRejectionError] = useState<string | null>(null);
   const [currentExistingImages, setCurrentExistingImages] = useState(existingImageUrls);
+  
+  useEffect(() => {
+    setCurrentExistingImages(existingImageUrls);
+  }, [existingImageUrls]);
 
-  // This useEffect was removed as it might contribute to update loops
-  // if existingImageUrls (default prop []) gets a new reference on re-renders.
-  // The initial useState(existingImageUrls) should handle the default case.
-  // useEffect(() => {
-  //   setCurrentExistingImages(existingImageUrls);
-  // }, [existingImageUrls]);
+  const onDrop = useCallback((acceptedFiles: File[], fileRejections: FileRejection[]) => {
+    setRejectionError(null);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles = maxFiles === 1 ? acceptedFiles.slice(0, 1) : [...files, ...acceptedFiles].slice(0, maxFiles);
+    if (fileRejections.length > 0) {
+      const firstRejection = fileRejections[0];
+      const errorMessage = firstRejection.errors.map(e => {
+          if (e.code === 'file-too-large') return `Файл слишком большой. Максимальный размер: ${formatBytes(maxSize)}.`;
+          if (e.code === 'file-invalid-type') return 'Неверный тип файла.';
+          if (e.code === 'too-many-files') return `Слишком много файлов. Максимум: ${maxFiles}.`;
+          return e.message;
+      }).join('\n');
+      setRejectionError(errorMessage);
+    }
+    
+    const newFiles = maxFiles === 1 ? acceptedFiles.slice(0, 1) : [...files, ...acceptedFiles].slice(0, maxFiles - currentExistingImages.length);
     setFiles(newFiles);
     onFilesChange(newFiles);
 
+    // Clean up old previews before creating new ones
+    previews.forEach(URL.revokeObjectURL);
+    
     const newPreviews = newFiles.map(file => URL.createObjectURL(file));
     setPreviews(newPreviews);
-  }, [files, maxFiles, onFilesChange]);
+
+  }, [files, maxFiles, onFilesChange, maxSize, currentExistingImages.length, previews]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'] },
     maxFiles: maxFiles,
+    maxSize: maxSize,
     multiple: maxFiles > 1,
   });
 
   const removeFile = (index: number) => {
     const newFiles = files.filter((_, i) => i !== index);
-    const newPreviews = previews.filter((_, i) => i !== index);
+    const newPreviews = newFiles.map(file => URL.createObjectURL(file));
     setFiles(newFiles);
     setPreviews(newPreviews);
     onFilesChange(newFiles);
@@ -79,7 +104,7 @@ export default function ImageUpload({
 
   return (
     <div className={cn("space-y-4", className)}>
-      {label && <p className="text-sm font-medium text-foreground">{label} (макс. {maxFiles})</p>}
+      {label && <p className="text-sm font-medium text-foreground">{label} (макс. {maxFiles}, до {formatBytes(maxSize)} каждый)</p>}
       
       {canUploadMore && (
         <div
@@ -87,6 +112,7 @@ export default function ImageUpload({
           className={cn(
             "border-2 border-dashed border-muted-foreground/50 rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors",
             isDragActive ? 'border-primary bg-primary/10' : '',
+            rejectionError ? 'border-destructive' : '',
             aspectRatio
           )}
         >
@@ -101,6 +127,16 @@ export default function ImageUpload({
             <p className="text-xs text-muted-foreground/50 mt-1">Поддерживаются JPG, PNG, GIF, WEBP</p>
           </div>
         </div>
+      )}
+
+      {rejectionError && (
+          <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Ошибка загрузки</AlertTitle>
+              <AlertDescription>
+                  {rejectionError}
+              </AlertDescription>
+          </Alert>
       )}
       
       {(currentExistingImages.length > 0 || previews.length > 0) && (
@@ -147,3 +183,5 @@ export default function ImageUpload({
     </div>
   );
 }
+
+    
