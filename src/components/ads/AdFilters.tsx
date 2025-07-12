@@ -201,8 +201,8 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 items-end">
-          <div className="xl:col-span-2">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-end">
+          <div className="md:col-span-2 lg:col-span-3 xl:col-span-4">
             <label htmlFor="keyword" className="block text-sm font-medium text-foreground mb-1">Ключевое слово</label>
             <Input
               id="keyword"
@@ -211,7 +211,8 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
               onChange={(e) => setKeyword(e.target.value)}
             />
           </div>
-          <div className="lg:col-span-1">
+          
+          <div className="lg:col-span-1 xl:col-span-2">
             <label htmlFor="category" className="block text-sm font-medium text-foreground mb-1">Категория</label>
             {isCategoryDataLoading ? <LoadingSpinner size={20}/> : (
               <CategoryTreeSelect
@@ -223,47 +224,49 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
             )}
           </div>
 
-          <div>
-            <label htmlFor="region" className="block text-sm font-medium text-foreground mb-1">Область</label>
-            <Select
-              value={selectedRegionId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedRegionId}
-              onValueChange={handleRegionChange}
-              disabled={isLocationDataLoading && !selectedRegionId}
-            >
-              <SelectTrigger id="region"><SelectValue placeholder="Все области" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_ITEMS_SENTINEL_VALUE}>Все области</SelectItem>
-                {regions.map(reg => <SelectItem key={reg.id} value={reg.id.toString()}>{reg.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label htmlFor="district" className="block text-sm font-medium text-foreground mb-1">Район</label>
-            <Select
-              value={selectedDistrictId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedDistrictId}
-              onValueChange={handleDistrictChange}
-              disabled={isLocationDataLoading || !selectedRegionId || (districts.length === 0 && !!selectedRegionId) }
-            >
-              <SelectTrigger id="district"><SelectValue placeholder="Все районы" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_ITEMS_SENTINEL_VALUE}>Все районы</SelectItem>
-                {districts.map(dist => <SelectItem key={dist.id} value={dist.id.toString()}>{dist.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label htmlFor="city" className="block text-sm font-medium text-foreground mb-1">Город</label>
-            <Select
-              value={selectedCityId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedCityId}
-              onValueChange={handleCityChange}
-              disabled={isLocationDataLoading || !selectedDistrictId || (cities.length === 0 && !!selectedDistrictId)}
-            >
-              <SelectTrigger id="city"><SelectValue placeholder="Все города" /></SelectTrigger>
-              <SelectContent>
-                 <SelectItem value={ALL_ITEMS_SENTINEL_VALUE}>Все города</SelectItem>
-                {cities.map(city => <SelectItem key={city.id} value={city.id.toString()}>{city.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="xl:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="region" className="block text-sm font-medium text-foreground mb-1">Область</label>
+              <Select
+                value={selectedRegionId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedRegionId}
+                onValueChange={handleRegionChange}
+                disabled={isLocationDataLoading && !selectedRegionId}
+              >
+                <SelectTrigger id="region"><SelectValue placeholder="Все области" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_ITEMS_SENTINEL_VALUE}>Все области</SelectItem>
+                  {regions.map(reg => <SelectItem key={reg.id} value={reg.id.toString()}>{reg.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="district" className="block text-sm font-medium text-foreground mb-1">Район</label>
+              <Select
+                value={selectedDistrictId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedDistrictId}
+                onValueChange={handleDistrictChange}
+                disabled={isLocationDataLoading || !selectedRegionId || (districts.length === 0 && !!selectedRegionId) }
+              >
+                <SelectTrigger id="district"><SelectValue placeholder="Все районы" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_ITEMS_SENTINEL_VALUE}>Все районы</SelectItem>
+                  {districts.map(dist => <SelectItem key={dist.id} value={dist.id.toString()}>{dist.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="city" className="block text-sm font-medium text-foreground mb-1">Город</label>
+              <Select
+                value={selectedCityId === undefined ? ALL_ITEMS_SENTINEL_VALUE : selectedCityId}
+                onValueChange={handleCityChange}
+                disabled={isLocationDataLoading || !selectedDistrictId || (cities.length === 0 && !!selectedDistrictId)}
+              >
+                <SelectTrigger id="city"><SelectValue placeholder="Все города" /></SelectTrigger>
+                <SelectContent>
+                   <SelectItem value={ALL_ITEMS_SENTINEL_VALUE}>Все города</SelectItem>
+                  {cities.map(city => <SelectItem key={city.id} value={city.id.toString()}>{city.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 items-end">
@@ -277,13 +280,14 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row xl:flex-col gap-2 xl:col-start-7 mt-2 sm:mt-0 md:mt-5">
+          <div className="flex flex-col sm:flex-row xl:flex-col gap-2 md:col-span-2 lg:col-span-1">
             <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
               Применить
             </Button>
             <Button type="button" variant="outline" onClick={handleReset} className="w-full" aria-label="Сбросить фильтры">
               <X className="h-4 w-4 sm:mr-2" />
-              <span className="">Сбросить</span>
+              <span className="hidden sm:inline">Сбросить</span>
+              <span className="sm:hidden">Сброс</span>
             </Button>
           </div>
         </form>

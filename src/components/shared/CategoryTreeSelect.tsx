@@ -64,7 +64,7 @@ const ChildCategoryList: React.FC<{
                   onSelect(category);
                 }}
                 className={cn(
-                  "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md truncate",
+                  "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md",
                   isSelected && "bg-accent text-accent-foreground font-semibold"
                 )}
                 style={indentationStyle}
@@ -138,17 +138,18 @@ export default function CategoryTreeSelect({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </DialogTrigger>
-       <DialogOverlay />
+      <DialogOverlay className="bg-black/10" />
       <DialogContent
         style={{
             top: `${dialogPosition.top}px`,
             left: `${dialogPosition.left}px`,
             width: `${dialogPosition.width}px`,
+            transform: 'none',
         }}
-        className="p-0 rounded-md border shadow-md w-auto"
+        className="p-0 rounded-md border shadow-md w-auto data-[state=open]:animate-none data-[state=closed]:animate-none"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogTitle className="sr-only">Выбор категории</DialogTitle>
+        <DialogTitle><span className="sr-only">Выбор категории</span></DialogTitle>
         <ScrollArea className="max-h-72">
           <div className="p-1">
             <DialogClose asChild>
@@ -159,7 +160,7 @@ export default function CategoryTreeSelect({
                     (value === undefined || value === null) && "bg-accent text-accent-foreground font-semibold"
                 )}
                 >
-                <span>{placeholder}</span>
+                <span className="truncate">{placeholder}</span>
                 {(value === undefined || value === null) && <Check className="h-4 w-4 ml-auto shrink-0" />}
                 </div>
             </DialogClose>
@@ -180,7 +181,7 @@ export default function CategoryTreeSelect({
                          }
                        }}
                        className={cn(
-                        "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md truncate font-normal",
+                        "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md font-normal",
                         !hasChildren && "hover:bg-muted/50 [&>svg.accordion-chevron]:hidden",
                         isSelected && "bg-accent text-accent-foreground font-semibold"
                        )}

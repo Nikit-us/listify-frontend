@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -21,7 +22,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50", // Removed background overlay color for dropdown-like behavior
+      "fixed inset-0 z-50", 
       className
     )}
     {...props}
@@ -37,13 +38,12 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-50 grid w-full gap-4 border bg-background p-1 shadow-lg", // Simplified for dropdown use
+        "fixed z-50 grid w-full gap-4 border bg-background p-1 shadow-lg",
         className
       )}
       {...props}
     >
       {children}
-      {/* The close button (X) is removed to make it behave like a dropdown */}
     </DialogPrimitive.Content>
   </DialogPortal>
 ))
