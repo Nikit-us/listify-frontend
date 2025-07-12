@@ -32,7 +32,7 @@ const formatBytes = (bytes: number, decimals = 2) => {
 export default function ImageUpload({
   onFilesChange,
   maxFiles = 1,
-  maxSize = 5 * 1024 * 1024, // 5 MB
+  maxSize = 10 * 1024 * 1024, // 10 MB
   label = "Загрузите изображения",
   existingImageUrls = [],
   onRemoveExistingImage,
