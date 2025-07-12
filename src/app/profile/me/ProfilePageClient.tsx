@@ -120,7 +120,7 @@ export default function ProfilePageClient() {
             />
             <div className="flex-grow text-center sm:text-left">
               <CardTitle className="text-3xl font-headline">{user.fullName}</CardTitle>
-              <CardDescription className="text-lg text-muted-foreground">{user.email}</CardDescription>
+              <CardDescription className="text-lg text-muted-foreground truncate">{user.email}</CardDescription>
               <p className="text-sm text-muted-foreground mt-1">
                 Зарегистрирован: {format(new Date(user.registeredAt), "d MMMM yyyy", { locale: ru })}
               </p>
@@ -134,15 +134,15 @@ export default function ProfilePageClient() {
         </CardHeader>
         <CardContent className="p-0">
           <Tabs defaultValue={initialTab} className="w-full" onValueChange={(value) => router.push(`/profile/me?tab=${value}`, { scroll: false })}>
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 rounded-none border-b">
+            <TabsList className="grid w-full grid-cols-3 rounded-none border-b">
               <TabsTrigger value="info" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none">
-                <PackageSearch className="mr-2 h-4 w-4 hidden sm:inline-block"/> Информация
+                <PackageSearch className="mr-2 h-4 w-4"/> <span className="truncate">Информация</span>
               </TabsTrigger>
               <TabsTrigger value="my-ads" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none">
-                <ListChecks className="mr-2 h-4 w-4 hidden sm:inline-block"/> Мои объявления 
+                <ListChecks className="mr-2 h-4 w-4"/> <span className="truncate">Мои объявления</span>
               </TabsTrigger>
                <TabsTrigger value="settings" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none">
-                <Settings className="mr-2 h-4 w-4 hidden sm:inline-block"/> Настройки
+                <Settings className="mr-2 h-4 w-4"/> <span className="truncate">Настройки</span>
               </TabsTrigger>
             </TabsList>
             
@@ -151,7 +151,7 @@ export default function ProfilePageClient() {
               <div className="space-y-3 text-foreground/80">
                 <div className="flex items-center">
                   <Mail className="h-5 w-5 mr-3 text-primary" />
-                  <span>{user.email}</span>
+                  <span className="truncate">{user.email}</span>
                 </div>
                 <div className="flex items-center">
                   <Phone className="h-5 w-5 mr-3 text-primary" />
