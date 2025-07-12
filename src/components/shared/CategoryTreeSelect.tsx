@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import type { CategoryTreeDto } from '@/types/api';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronDown, Check } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,7 @@ interface CategoryTreeSelectProps {
   className?: string;
 }
 
+// Helper to find a category and its name in the tree
 const findCategoryInTree = (
   categories: CategoryTreeDto[],
   categoryId?: number
@@ -36,8 +38,8 @@ const findCategoryInTree = (
   return null;
 };
 
-// Recursive component to render the category list
-const RenderCategoryList: React.FC<{
+// Component for rendering child categories (without accordion)
+const ChildCategoryList: React.FC<{
   categories: CategoryTreeDto[];
   onSelect: (category: CategoryTreeDto) => void;
   selectedValue?: number;
@@ -47,39 +49,29 @@ const RenderCategoryList: React.FC<{
     <>
       {categories.map((category) => {
         const isSelected = category.id === selectedValue;
-        const hasChildren = category.children && category.children.length > 0;
-        
-        // Calculate indentation style
-        const indentationStyle = { paddingLeft: `${level * 1.25}rem` };
+        const indentationStyle = { paddingLeft: `${level * 1.5}rem` };
 
         return (
-          <React.Fragment key={category.id}>
-            <div
-              onClick={() => onSelect(category)}
-              className={cn(
-                "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-accent/50 rounded-md truncate",
-                isSelected && "bg-accent text-accent-foreground font-semibold"
-              )}
-              style={indentationStyle}
-            >
-              <span>{category.name}</span>
-              {isSelected && <Check className="h-4 w-4 ml-auto shrink-0" />}
-            </div>
-            {hasChildren && (
-              <RenderCategoryList
-                categories={category.children}
-                onSelect={onSelect}
-                selectedValue={selectedValue}
-                level={level + 1}
-              />
+          <div
+            key={category.id}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent accordion from toggling
+              onSelect(category);
+            }}
+            className={cn(
+              "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md truncate",
+              isSelected && "bg-accent text-accent-foreground font-semibold"
             )}
-          </React.Fragment>
+            style={indentationStyle}
+          >
+            <span className="truncate">{category.name}</span>
+            {isSelected && <Check className="h-4 w-4 ml-auto shrink-0" />}
+          </div>
         );
       })}
     </>
   );
 };
-
 
 export default function CategoryTreeSelect({
   treeData,
@@ -92,24 +84,18 @@ export default function CategoryTreeSelect({
   const [selectedCategoryName, setSelectedCategoryName] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (value !== undefined && value !== null && treeData.length > 0) {
-      const selectedCat = findCategoryInTree(treeData, value);
-      setSelectedCategoryName(selectedCat?.name);
-    } else {
-      setSelectedCategoryName(undefined);
-    }
+    const selectedCat = findCategoryInTree(treeData, value);
+    setSelectedCategoryName(selectedCat?.name);
   }, [value, treeData]);
 
   const handleSelect = (category: CategoryTreeDto) => {
     onChange(category.id, category.name);
-    setSelectedCategoryName(category.name);
     setIsOpen(false);
   };
   
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     onChange(undefined, undefined);
-    setSelectedCategoryName(undefined);
     setIsOpen(false);
   };
 
@@ -128,22 +114,55 @@ export default function CategoryTreeSelect({
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <ScrollArea className="max-h-72">
-           <div className="p-1">
-             <div
-                onClick={handleClear}
-                className={cn(
-                  "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-accent/50 rounded-md text-muted-foreground",
-                  (value === undefined || value === null) && "bg-accent text-accent-foreground font-semibold"
-                )}
-              >
-                <span>{placeholder}</span>
-                 {(value === undefined || value === null) && <Check className="h-4 w-4 ml-auto shrink-0" />}
-              </div>
-            <RenderCategoryList
-              categories={treeData}
-              onSelect={handleSelect}
-              selectedValue={value}
-            />
+          <div className="p-1">
+            <div
+              onClick={handleClear}
+              className={cn(
+                "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md text-muted-foreground",
+                (value === undefined || value === null) && "bg-accent text-accent-foreground font-semibold"
+              )}
+            >
+              <span>{placeholder}</span>
+              {(value === undefined || value === null) && <Check className="h-4 w-4 ml-auto shrink-0" />}
+            </div>
+
+            <Accordion type="single" collapsible className="w-full">
+              {treeData.map((category) => {
+                 const isSelected = category.id === value;
+                 const hasChildren = category.children && category.children.length > 0;
+
+                 return (
+                  <AccordionItem value={`item-${category.id}`} key={category.id} className="border-b-0">
+                     <AccordionTrigger
+                       onClick={(e) => {
+                         if (!hasChildren) {
+                           e.preventDefault();
+                           handleSelect(category);
+                         }
+                       }}
+                       className={cn(
+                        "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md truncate font-normal",
+                        !hasChildren && "hover:bg-muted/50 [&>svg.accordion-chevron]:hidden",
+                        isSelected && "bg-accent text-accent-foreground font-semibold"
+                       )}
+                     >
+                        <span className="truncate">{category.name}</span>
+                        {isSelected && !hasChildren && <Check className="h-4 w-4 ml-auto shrink-0" />}
+                     </AccordionTrigger>
+                     {hasChildren && (
+                       <AccordionContent className="pt-0 pb-1">
+                          <ChildCategoryList
+                            categories={category.children}
+                            onSelect={handleSelect}
+                            selectedValue={value}
+                            level={1}
+                          />
+                       </AccordionContent>
+                     )}
+                  </AccordionItem>
+                 )
+              })}
+            </Accordion>
           </div>
         </ScrollArea>
       </PopoverContent>
