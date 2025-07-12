@@ -194,7 +194,7 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
   }
 
   return (
-    <Card className="shadow-sm z-10 bg-background/90 mb-8"> {/* Removed sticky and top classes, added mb-8 for spacing */}
+    <Card className="shadow-sm z-10 bg-background/90 mb-8">
       <CardHeader className="pb-4 pt-4">
         <CardTitle className="text-xl flex items-center">
           <Filter className="mr-2 h-5 w-5" /> Фильтры
@@ -292,4 +292,4 @@ export default function AdFilters({ onFilterChange, initialFilters = {} }: AdFil
   );
 }
 
-
+    

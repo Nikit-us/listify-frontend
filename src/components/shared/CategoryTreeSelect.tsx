@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 interface CategoryTreeSelectProps {
   treeData: CategoryTreeDto[];
-  value?: number; // selected category ID
+  value?: number;
   onChange: (categoryId?: number, categoryName?: string) => void;
   placeholder?: string;
   className?: string;
@@ -47,12 +47,12 @@ const RenderCategoryNode: React.FC<{
   const isSelected = category.id === selectedValue;
 
   const handleCategoryClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     onSelect(category);
   };
 
-  const basePaddingClass = 'px-2'; 
-  const indentationClass = level === 0 ? '' : `pl-${(level * 2) + 2}`; 
+  const basePaddingClass = 'px-2';
+  const indentationClass = level === 0 ? '' : `pl-${(level * 2) + 2}`;
 
   if (hasChildren) {
     return (
@@ -60,9 +60,9 @@ const RenderCategoryNode: React.FC<{
         <div className="flex items-center w-full">
           <AccordionTrigger
             className={cn(
-              "flex-1 py-2 text-sm hover:bg-accent rounded-md data-[state=open]:bg-accent/50 text-left",
+              "flex-1 py-2 text-sm hover:bg-accent/50 rounded-md data-[state=open]:bg-accent/50 text-left",
               basePaddingClass,
-              indentationClass,
+              indentationClass
             )}
           >
             <div className="flex items-center justify-between w-full">
@@ -71,19 +71,19 @@ const RenderCategoryNode: React.FC<{
           </AccordionTrigger>
         </div>
         <AccordionContent className="pb-0">
-          <div className={cn("space-y-0.5")}>
-             <div
-                onClick={handleCategoryClick}
-                className={cn(
-                  "flex items-center justify-between py-2 text-sm cursor-pointer hover:bg-accent rounded-md",
-                  basePaddingClass, 
-                  `pl-${((level +1) * 2)}`,
-                  isSelected && "bg-accent font-semibold"
-                )}
-              >
-                <span className="truncate font-medium">{category.name} (выбрать)</span>
-                {isSelected && <Check className="h-4 w-4 ml-2 text-primary shrink-0" />}
-              </div>
+          <div className="space-y-0.5">
+            <div
+              onClick={handleCategoryClick}
+              className={cn(
+                "flex items-center justify-between py-2 text-sm cursor-pointer hover:bg-accent/50 rounded-md",
+                basePaddingClass,
+                `pl-${((level + 1) * 2)}`,
+                isSelected && "bg-accent font-semibold"
+              )}
+            >
+              <span className="truncate font-medium">{category.name} (выбрать)</span>
+              {isSelected && <Check className="h-4 w-4 ml-2 text-primary shrink-0" />}
+            </div>
             {category.children?.map((child) => (
               <RenderCategoryNode
                 key={child.id}
@@ -103,7 +103,7 @@ const RenderCategoryNode: React.FC<{
     <div
       onClick={handleCategoryClick}
       className={cn(
-        "flex items-center justify-between py-2 text-sm cursor-pointer hover:bg-accent rounded-md",
+        "flex items-center justify-between py-2 text-sm cursor-pointer hover:bg-accent/50 rounded-md",
         basePaddingClass,
         indentationClass,
         isSelected && "bg-accent font-semibold"
@@ -146,7 +146,6 @@ export default function CategoryTreeSelect({
     setSelectedCategoryName(undefined);
   };
 
-
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild className={className}>
@@ -163,16 +162,16 @@ export default function CategoryTreeSelect({
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <ScrollArea className="max-h-72">
           <div className="p-1">
-             <div
-                onClick={handleClear}
-                className={cn(
-                  "flex items-center justify-between py-2 px-2 text-sm cursor-pointer hover:bg-accent rounded-md text-muted-foreground",
-                  (value === undefined || value === null) && "bg-accent font-semibold text-accent-foreground"
-                )}
-              >
-                <span>{placeholder}</span>
-                 {(value === undefined || value === null) && <Check className="h-4 w-4 ml-2 text-primary shrink-0" />}
-              </div>
+            <div
+              onClick={handleClear}
+              className={cn(
+                "flex items-center justify-between py-2 px-2 text-sm cursor-pointer hover:bg-accent/50 rounded-md text-muted-foreground",
+                (value === undefined || value === null) && "bg-accent font-semibold text-accent-foreground"
+              )}
+            >
+              <span>{placeholder}</span>
+              {(value === undefined || value === null) && <Check className="h-4 w-4 ml-2 text-primary shrink-0" />}
+            </div>
             <Accordion type="multiple" className="w-full">
               {treeData.map((category) => (
                 <RenderCategoryNode
@@ -190,3 +189,5 @@ export default function CategoryTreeSelect({
     </Popover>
   );
 }
+
+    
