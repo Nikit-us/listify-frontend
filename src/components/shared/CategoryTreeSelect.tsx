@@ -15,17 +15,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface CategoryTreeSelectProps {
-  treeData: CategoryTreeDto[];
-  value?: number;
-  onChange: (categoryId?: number, categoryName?: string) => void;
-  placeholder?: string;
-  className?: string;
-}
+// --- Helper Functions to find category and its path in the tree ---
 
 const findCategoryInTree = (
   categories: CategoryTreeDto[],
@@ -65,6 +58,8 @@ const findCategoryPath = (
   return [];
 };
 
+
+// --- Recursive Category Node Component for Accordion ---
 
 const CategoryNode: React.FC<{
   category: CategoryTreeDto;
@@ -107,13 +102,21 @@ const CategoryNode: React.FC<{
 };
 
 
+// --- Main CategoryTreeSelect Component ---
+
 export default function CategoryTreeSelect({
   treeData,
   value,
   onChange,
   placeholder = "Выберите категорию",
   className,
-}: CategoryTreeSelectProps) {
+}: {
+  treeData: CategoryTreeDto[];
+  value?: number;
+  onChange: (categoryId?: number, categoryName?: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategoryName, setSelectedCategoryName] = useState<string | undefined>(undefined);
   const [openAccordionItems, setOpenAccordionItems] = useState<string[]>([]);
@@ -125,7 +128,7 @@ export default function CategoryTreeSelect({
       const path = findCategoryPath(treeData, value);
       setOpenAccordionItems(path.map(id => id.toString()));
     } else {
-        setOpenAccordionItems([]);
+      setOpenAccordionItems([]);
     }
   }, [value, treeData]);
 
@@ -153,36 +156,33 @@ export default function CategoryTreeSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="p-0"
+        className="p-2 overflow-y-auto max-h-72" // This ensures scrolling
         side="bottom"
         align="start"
         style={{ width: 'var(--radix-popover-trigger-width)' }}
+        onWheel={(e) => e.stopPropagation()} // Stop page scroll when scrolling the list
       >
-        <ScrollArea className="max-h-72">
-            <div className="p-2">
-                <Button
-                    variant="ghost"
-                    onClick={handleClear}
-                    className={cn(
-                      "w-full justify-start font-normal h-auto py-2 px-2 text-sm mb-1",
-                       (value === undefined || value === null) && "bg-accent text-accent-foreground"
-                    )}
-                >
-                    {placeholder}
-                    {(value === undefined || value === null) && <Check className="h-4 w-4 ml-auto" />}
-                </Button>
-                <Accordion
-                    type="multiple"
-                    value={openAccordionItems}
-                    onValueChange={setOpenAccordionItems}
-                    className="w-full"
-                >
-                {treeData.map(category => (
-                    <CategoryNode key={category.id} category={category} onSelect={handleSelect} selectedValue={value} />
-                ))}
-                </Accordion>
-            </div>
-        </ScrollArea>
+          <Button
+              variant="ghost"
+              onClick={handleClear}
+              className={cn(
+                "w-full justify-start font-normal h-auto py-2 px-2 text-sm mb-1",
+                (value === undefined || value === null) && "bg-accent text-accent-foreground"
+              )}
+          >
+              {placeholder}
+              {(value === undefined || value === null) && <Check className="h-4 w-4 ml-auto" />}
+          </Button>
+          <Accordion
+              type="multiple"
+              value={openAccordionItems}
+              onValueChange={setOpenAccordionItems}
+              className="w-full"
+          >
+          {treeData.map(category => (
+              <CategoryNode key={category.id} category={category} onSelect={handleSelect} selectedValue={value} />
+          ))}
+          </Accordion>
       </PopoverContent>
     </Popover>
   );
