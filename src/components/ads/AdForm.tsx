@@ -156,8 +156,10 @@ export default function AdForm({ adId }: AdFormProps) {
   }, [adId, form, router, toast, user]);
 
   useEffect(() => {
-    fetchFormData();
-  }, [fetchFormData]);
+    if (!authLoading) {
+        fetchFormData();
+    }
+  }, [fetchFormData, authLoading]);
 
 
   useEffect(() => {
