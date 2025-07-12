@@ -63,30 +63,21 @@ const RenderCategoryNode: React.FC<{
               "flex-1 py-2 text-sm hover:bg-accent rounded-md data-[state=open]:bg-accent/50 text-left",
               basePaddingClass,
               indentationClass,
-              // Do not highlight parent if it's just for expanding
             )}
           >
-            {/* Wrap the clickable part if you want clicks on name to also select */}
-            <div className="flex items-center justify-between w-full" onClick={(e) => {
-                // Allow accordion to toggle, but also select if clicked directly
-                // handleCategoryClick(e); 
-                // Decided against this to avoid confusion: click name to select, chevron to expand.
-                // User can click the name in the accordion content for selection.
-            }}>
+            <div className="flex items-center justify-between w-full">
               <span className="truncate">{category.name}</span>
-              {/* Chevron is part of AccordionTrigger */}
             </div>
           </AccordionTrigger>
         </div>
         <AccordionContent className="pb-0">
           <div className={cn("space-y-0.5")}>
-             {/* Allow selecting parent category from content area */}
              <div
                 onClick={handleCategoryClick}
                 className={cn(
                   "flex items-center justify-between py-2 text-sm cursor-pointer hover:bg-accent rounded-md",
                   basePaddingClass, 
-                  `pl-${((level +1) * 2)}`, // Indent parent name similar to children for selection
+                  `pl-${((level +1) * 2)}`,
                   isSelected && "bg-accent font-semibold"
                 )}
               >
@@ -108,7 +99,6 @@ const RenderCategoryNode: React.FC<{
     );
   }
 
-  // Leaf node or parent selected directly from its "select parent" entry
   return (
     <div
       onClick={handleCategoryClick}
@@ -170,7 +160,7 @@ export default function CategoryTreeSelect({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <ScrollArea className="max-h-72">
           <div className="p-1">
              <div
