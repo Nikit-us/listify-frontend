@@ -1,10 +1,16 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { CategoryTreeDto } from '@/types/api';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogOverlay,
+  DialogClose
+} from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronDown, Check } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -50,21 +56,22 @@ const ChildCategoryList: React.FC<{
         const indentationStyle = { paddingLeft: `${level * 1.5}rem` };
 
         return (
-          <div
-            key={category.id}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(category);
-            }}
-            className={cn(
-              "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md truncate",
-              isSelected && "bg-accent text-accent-foreground font-semibold"
-            )}
-            style={indentationStyle}
-          >
-            <span className="truncate">{category.name}</span>
-            {isSelected && <Check className="h-4 w-4 ml-auto shrink-0" />}
-          </div>
+          <DialogClose asChild key={category.id}>
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(category);
+                }}
+                className={cn(
+                  "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md truncate",
+                  isSelected && "bg-accent text-accent-foreground font-semibold"
+                )}
+                style={indentationStyle}
+              >
+                <span className="truncate">{category.name}</span>
+                {isSelected && <Check className="h-4 w-4 ml-auto shrink-0" />}
+              </div>
+          </DialogClose>
         );
       })}
     </>
@@ -80,6 +87,8 @@ export default function CategoryTreeSelect({
 }: CategoryTreeSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategoryName, setSelectedCategoryName] = useState<string | undefined>(undefined);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [dialogPosition, setDialogPosition] = useState({ top: 0, left: 0, width: 0 });
 
   useEffect(() => {
     const selectedCat = findCategoryInTree(treeData, value);
@@ -96,10 +105,28 @@ export default function CategoryTreeSelect({
     onChange(undefined, undefined);
     setIsOpen(false);
   };
+  
+  const updateDialogPosition = () => {
+    if (triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        setDialogPosition({
+            top: rect.bottom + window.scrollY + 8, // 8px offset
+            left: rect.left + window.scrollX,
+            width: rect.width,
+        });
+    }
+  };
+
+  const handleOpenChange = (open: boolean) => {
+      if(open) {
+          updateDialogPosition();
+      }
+      setIsOpen(open);
+  }
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild className={className}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild className={className} ref={triggerRef}>
         <Button
           variant="outline"
           role="combobox"
@@ -109,20 +136,32 @@ export default function CategoryTreeSelect({
           <span className="truncate">{selectedCategoryName || placeholder}</span>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <ScrollArea className="max-h-72">
+      </DialogTrigger>
+       <DialogOverlay className="bg-transparent" />
+      <DialogContent
+        style={{
+            top: `${dialogPosition.top}px`,
+            left: `${dialogPosition.left}px`,
+            width: `${dialogPosition.width}px`,
+            transform: 'none', // Override default centering
+        }}
+        className="p-0 rounded-md border shadow-md w-auto"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <ScrollArea className="max-h-[60vh]">
           <div className="p-1">
-            <div
-              onClick={handleClear}
-              className={cn(
-                "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md text-muted-foreground",
-                (value === undefined || value === null) && "bg-accent text-accent-foreground font-semibold"
-              )}
-            >
-              <span>{placeholder}</span>
-              {(value === undefined || value === null) && <Check className="h-4 w-4 ml-auto shrink-0" />}
-            </div>
+            <DialogClose asChild>
+                <div
+                onClick={handleClear}
+                className={cn(
+                    "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-muted/50 rounded-md text-muted-foreground",
+                    (value === undefined || value === null) && "bg-accent text-accent-foreground font-semibold"
+                )}
+                >
+                <span>{placeholder}</span>
+                {(value === undefined || value === null) && <Check className="h-4 w-4 ml-auto shrink-0" />}
+                </div>
+            </DialogClose>
 
             <Accordion type="single" collapsible className="w-full">
               {treeData.map((category) => {
@@ -136,6 +175,7 @@ export default function CategoryTreeSelect({
                          if (!hasChildren) {
                            e.preventDefault();
                            handleSelect(category);
+                           setIsOpen(false);
                          }
                        }}
                        className={cn(
@@ -145,7 +185,11 @@ export default function CategoryTreeSelect({
                        )}
                      >
                         <span className="truncate">{category.name}</span>
-                        {isSelected && !hasChildren && <Check className="h-4 w-4 ml-auto shrink-0" />}
+                        {isSelected && !hasChildren && (
+                            <DialogClose asChild>
+                                <Check className="h-4 w-4 ml-auto shrink-0" />
+                            </DialogClose>
+                        )}
                      </AccordionTrigger>
                      {hasChildren && (
                        <AccordionContent className="pt-0 pb-1">
@@ -163,8 +207,7 @@ export default function CategoryTreeSelect({
             </Accordion>
           </div>
         </ScrollArea>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }
-
