@@ -111,7 +111,7 @@ export default function ProfilePageClient() {
         <CardHeader className="bg-muted/30 p-6 border-b">
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <Image
-              src={user.avatarUrl || "https://placehold.co/150x150.png?text=Avatar"}
+              src={user.avatarUrl || "https://placehold.co/150x150.png"}
               alt={user.fullName}
               width={150}
               height={150}

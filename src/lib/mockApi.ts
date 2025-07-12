@@ -28,7 +28,7 @@ import type {
 // --- API Configuration ---
 // URL вашего API. Теперь он берется из переменной окружения.
 // Вы можете изменить его в файле .env.local
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://listify-app.site';
 
 // Выводим предупреждение в консоль, если переменная не установлена,
 // чтобы помочь при отладке.
@@ -339,7 +339,7 @@ export const updateUserProfile = async (data: UserUpdateProfileDto, avatar: File
 
 export const getUserProfile = async (userId: number, token?: string | null): Promise<UserProfileDto | null> => {
   const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
-  const url = `${API_BASE_URL}/api/users/${userId}/profile`;
+  const url = `${API_BASE_URL}/api/users/${userId}`;
   console.log(`[mockApi] Fetching user profile for ${userId} from: ${url}`);
   try {
     const response = await fetch(url, { headers });
