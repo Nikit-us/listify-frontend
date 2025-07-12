@@ -47,15 +47,15 @@ export default function AdminPageClient() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="hits" className="w-full">
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="hits">
-                <BarChart className="mr-2 h-4 w-4" /> Статистика
+                <BarChart className="mr-0 sm:mr-2 h-4 w-4" /> <span className="hidden sm:inline">Статистика</span>
               </TabsTrigger>
               <TabsTrigger value="logs">
-                <FileText className="mr-2 h-4 w-4" /> Логи
+                <FileText className="mr-0 sm:mr-2 h-4 w-4" /> <span className="hidden sm:inline">Логи</span>
               </TabsTrigger>
               <TabsTrigger value="categories">
-                <LayoutList className="mr-2 h-4 w-4" /> Категории
+                <LayoutList className="mr-0 sm:mr-2 h-4 w-4" /> <span className="hidden sm:inline">Категории</span>
               </TabsTrigger>
             </TabsList>
             
