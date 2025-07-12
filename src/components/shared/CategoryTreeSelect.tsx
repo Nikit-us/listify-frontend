@@ -4,11 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import type { CategoryTreeDto } from '@/types/api';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronDown, Check } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -102,8 +98,8 @@ export default function CategoryTreeSelect({
   };
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger asChild className={className}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild className={className}>
         <Button
           variant="outline"
           role="combobox"
@@ -113,8 +109,8 @@ export default function CategoryTreeSelect({
           <span className="truncate">{selectedCategoryName || placeholder}</span>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] p-0" align="start">
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <ScrollArea className="max-h-72">
           <div className="p-1">
             <div
@@ -167,7 +163,8 @@ export default function CategoryTreeSelect({
             </Accordion>
           </div>
         </ScrollArea>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverContent>
+    </Popover>
   );
 }
+
