@@ -39,6 +39,13 @@ export default function Navbar() {
             </div>
           ) : isAuthenticated && user ? (
             <>
+              {isAdmin && (
+                 <Button variant="outline" asChild>
+                    <Link href="/admin">
+                        <ShieldCheck className="mr-0 sm:mr-2 h-4 w-4" /> <span className="hidden sm:inline">Админ-панель</span>
+                    </Link>
+                 </Button>
+              )}
               <Button asChild>
                 <Link href="/ads/new">
                   <PlusCircle className="mr-0 sm:mr-2 h-4 w-4" /> <span className="hidden sm:inline">Создать</span>
@@ -63,14 +70,6 @@ export default function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                   {isAdmin && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin">
-                        <ShieldCheck className="mr-2 h-4 w-4" />
-                        Админ-панель
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuItem asChild>
                     <Link href="/profile/me">
                       <User className="mr-2 h-4 w-4" />
@@ -78,7 +77,7 @@ export default function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                    <DropdownMenuItem asChild>
-                    <Link href="/profile/me?tab=my-ads"> {/* Assuming profile page can handle tabs */}
+                    <Link href="/profile/me?tab=my-ads">
                       <ListChecks className="mr-2 h-4 w-4" />
                       Мои объявления
                     </Link>
