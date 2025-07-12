@@ -5,7 +5,6 @@ import React, { useState, useEffect } from 'react';
 import type { CategoryTreeDto } from '@/types/api';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronDown, Check } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -37,83 +36,50 @@ const findCategoryInTree = (
   return null;
 };
 
-const RenderCategoryNode: React.FC<{
-  category: CategoryTreeDto;
+// Recursive component to render the category list
+const RenderCategoryList: React.FC<{
+  categories: CategoryTreeDto[];
   onSelect: (category: CategoryTreeDto) => void;
-  level: number;
   selectedValue?: number;
-}> = ({ category, onSelect, level, selectedValue }) => {
-  const hasChildren = category.children && category.children.length > 0;
-  const isSelected = category.id === selectedValue;
-
-  const handleCategoryClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelect(category);
-  };
-
-  const basePaddingClass = 'px-2';
-  const indentationClass = level === 0 ? '' : `pl-${(level * 2) + 2}`;
-
-  if (hasChildren) {
-    return (
-      <AccordionItem value={category.id.toString()} className="border-none">
-        <div className="flex items-center w-full">
-          <AccordionTrigger
-            className={cn(
-              "flex-1 py-2 text-sm hover:bg-accent/50 rounded-md data-[state=open]:bg-accent/50 text-left",
-              basePaddingClass,
-              indentationClass
-            )}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="truncate">{category.name}</span>
-            </div>
-          </AccordionTrigger>
-        </div>
-        <AccordionContent className="pb-0">
-          <div className="space-y-0.5">
-            <div
-              onClick={handleCategoryClick}
-              className={cn(
-                "flex items-center justify-between py-2 text-sm cursor-pointer hover:bg-accent/50 rounded-md",
-                basePaddingClass,
-                `pl-${((level + 1) * 2)}`,
-                isSelected && "bg-accent font-semibold"
-              )}
-            >
-              <span className="truncate font-medium">{category.name} (выбрать)</span>
-              {isSelected && <Check className="h-4 w-4 ml-2 text-primary shrink-0" />}
-            </div>
-            {category.children?.map((child) => (
-              <RenderCategoryNode
-                key={child.id}
-                category={child}
-                onSelect={onSelect}
-                level={level + 1}
-                selectedValue={selectedValue}
-              />
-            ))}
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    );
-  }
-
+  level?: number;
+}> = ({ categories, onSelect, selectedValue, level = 0 }) => {
   return (
-    <div
-      onClick={handleCategoryClick}
-      className={cn(
-        "flex items-center justify-between py-2 text-sm cursor-pointer hover:bg-accent/50 rounded-md",
-        basePaddingClass,
-        indentationClass,
-        isSelected && "bg-accent font-semibold"
-      )}
-    >
-      <span className="truncate">{category.name}</span>
-      {isSelected && <Check className="h-4 w-4 ml-2 text-primary shrink-0" />}
-    </div>
+    <>
+      {categories.map((category) => {
+        const isSelected = category.id === selectedValue;
+        const hasChildren = category.children && category.children.length > 0;
+        
+        // Calculate indentation style
+        const indentationStyle = { paddingLeft: `${level * 1.25}rem` };
+
+        return (
+          <React.Fragment key={category.id}>
+            <div
+              onClick={() => onSelect(category)}
+              className={cn(
+                "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-accent/50 rounded-md truncate",
+                isSelected && "bg-accent text-accent-foreground font-semibold"
+              )}
+              style={indentationStyle}
+            >
+              <span>{category.name}</span>
+              {isSelected && <Check className="h-4 w-4 ml-auto shrink-0" />}
+            </div>
+            {hasChildren && (
+              <RenderCategoryList
+                categories={category.children}
+                onSelect={onSelect}
+                selectedValue={selectedValue}
+                level={level + 1}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </>
   );
 };
+
 
 export default function CategoryTreeSelect({
   treeData,
@@ -144,6 +110,7 @@ export default function CategoryTreeSelect({
     e.stopPropagation();
     onChange(undefined, undefined);
     setSelectedCategoryName(undefined);
+    setIsOpen(false);
   };
 
   return (
@@ -153,7 +120,7 @@ export default function CategoryTreeSelect({
           variant="outline"
           role="combobox"
           aria-expanded={isOpen}
-          className="w-full justify-between text-sm"
+          className="w-full justify-between font-normal"
         >
           <span className="truncate">{selectedCategoryName || placeholder}</span>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -161,33 +128,25 @@ export default function CategoryTreeSelect({
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <ScrollArea className="max-h-72">
-          <div className="p-1">
-            <div
-              onClick={handleClear}
-              className={cn(
-                "flex items-center justify-between py-2 px-2 text-sm cursor-pointer hover:bg-accent/50 rounded-md text-muted-foreground",
-                (value === undefined || value === null) && "bg-accent font-semibold text-accent-foreground"
-              )}
-            >
-              <span>{placeholder}</span>
-              {(value === undefined || value === null) && <Check className="h-4 w-4 ml-2 text-primary shrink-0" />}
-            </div>
-            <Accordion type="multiple" className="w-full">
-              {treeData.map((category) => (
-                <RenderCategoryNode
-                  key={category.id}
-                  category={category}
-                  onSelect={handleSelect}
-                  level={0}
-                  selectedValue={value}
-                />
-              ))}
-            </Accordion>
+           <div className="p-1">
+             <div
+                onClick={handleClear}
+                className={cn(
+                  "flex items-center justify-between w-full text-sm px-3 py-2 cursor-pointer hover:bg-accent/50 rounded-md text-muted-foreground",
+                  (value === undefined || value === null) && "bg-accent text-accent-foreground font-semibold"
+                )}
+              >
+                <span>{placeholder}</span>
+                 {(value === undefined || value === null) && <Check className="h-4 w-4 ml-auto shrink-0" />}
+              </div>
+            <RenderCategoryList
+              categories={treeData}
+              onSelect={handleSelect}
+              selectedValue={value}
+            />
           </div>
         </ScrollArea>
       </PopoverContent>
     </Popover>
   );
 }
-
-    
