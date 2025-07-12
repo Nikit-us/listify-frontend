@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { CategoryTreeDto } from '@/types/api';
 import { Button } from '@/components/ui/button';
 import {
@@ -77,7 +77,7 @@ const CategoryNode: React.FC<{
   if (hasChildren) {
     return (
       <AccordionItem value={category.id.toString()} className="border-b-0">
-        <AccordionTrigger className="py-2 px-2 rounded-md hover:bg-accent text-sm">
+        <AccordionTrigger className="py-2 px-2 rounded-md hover:bg-accent hover:text-accent-foreground text-sm">
           {category.name}
         </AccordionTrigger>
         <AccordionContent className="pl-4 pb-0">
@@ -100,8 +100,8 @@ const CategoryNode: React.FC<{
       )}
       onClick={() => onSelect(category)}
     >
-      {category.name}
-       {isSelected && <Check className="h-4 w-4 ml-auto" />}
+      <span className="truncate">{category.name}</span>
+       {isSelected && <Check className="h-4 w-4 ml-auto shrink-0" />}
     </Button>
   );
 };
@@ -124,6 +124,8 @@ export default function CategoryTreeSelect({
     if (selectedCat) {
       const path = findCategoryPath(treeData, value);
       setOpenAccordionItems(path.map(id => id.toString()));
+    } else {
+        setOpenAccordionItems([]);
     }
   }, [value, treeData]);
 
@@ -155,23 +157,20 @@ export default function CategoryTreeSelect({
         side="bottom"
         align="start"
         style={{ width: 'var(--radix-popover-trigger-width)' }}
-        onWheel={(event) => event.stopPropagation()}
       >
-        <div className="p-2">
-            <Button
-                variant="ghost"
-                onClick={handleClear}
-                className={cn(
-                  "w-full justify-start font-normal h-auto py-2 px-2 text-sm mb-1",
-                   (value === undefined || value === null) && "bg-accent text-accent-foreground"
-                )}
-            >
-                {placeholder}
-                {(value === undefined || value === null) && <Check className="h-4 w-4 ml-auto" />}
-            </Button>
-        </div>
         <ScrollArea className="max-h-72">
-            <div className="p-2 pt-0" onWheel={(e) => e.stopPropagation()}>
+            <div className="p-2">
+                <Button
+                    variant="ghost"
+                    onClick={handleClear}
+                    className={cn(
+                      "w-full justify-start font-normal h-auto py-2 px-2 text-sm mb-1",
+                       (value === undefined || value === null) && "bg-accent text-accent-foreground"
+                    )}
+                >
+                    {placeholder}
+                    {(value === undefined || value === null) && <Check className="h-4 w-4 ml-auto" />}
+                </Button>
                 <Accordion
                     type="multiple"
                     value={openAccordionItems}
