@@ -47,7 +47,7 @@ export default function AdminPageClient() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="hits" className="w-full">
-            <TabsList className="grid w-full grid-cols-1 md:grid-cols-3">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
               <TabsTrigger value="hits">
                 <BarChart className="mr-2 h-4 w-4" /> Статистика
               </TabsTrigger>

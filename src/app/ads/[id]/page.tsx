@@ -140,19 +140,21 @@ export default function AdDetailPage() {
           <ImageGallery images={ad.images} altText={ad.title} />
         </CardHeader>
         <CardContent className="p-6 space-y-6">
-          <div className="flex flex-col md:flex-row justify-between md:items-start gap-4">
-            <div>
+          <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
+            <div className="flex-1">
               <h1 className="text-3xl font-bold font-headline text-primary">{ad.title}</h1>
               <div className="flex items-center text-muted-foreground text-sm mt-1">
                 <CalendarDays className="h-4 w-4 mr-2" />
                 Опубликовано: {format(new Date(ad.createdAt), "d MMMM yyyy 'в' HH:mm", { locale: ru })}
-                {ad.createdAt !== ad.updatedAt && (
-                   <span className="ml-1">(обновлено: {format(new Date(ad.updatedAt), "d MMMM yyyy 'в' HH:mm", { locale: ru })})</span>
-                )}
               </div>
+               {ad.createdAt !== ad.updatedAt && (
+                   <div className="text-muted-foreground text-xs mt-1">
+                     (обновлено: {format(new Date(ad.updatedAt), "d MMMM yyyy 'в' HH:mm", { locale: ru })})
+                   </div>
+                )}
             </div>
             {isOwner && (
-              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-4 md:mt-0 self-stretch sm:self-auto">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 sm:mt-0 shrink-0">
                 <Button variant="outline" onClick={() => router.push(`/ads/${ad.id}/edit`)} className="w-full sm:w-auto">
                   <Edit className="mr-2 h-4 w-4" /> Редактировать
                 </Button>
@@ -226,4 +228,3 @@ export default function AdDetailPage() {
     </div>
   );
 }
-

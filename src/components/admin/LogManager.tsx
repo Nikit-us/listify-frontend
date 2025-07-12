@@ -118,14 +118,14 @@ export default function LogManager() {
               placeholder="YYYY-MM-DD (опционально)"
               className="w-full sm:w-auto"
             />
-            <Button onClick={handleGenerate} disabled={isGenerating}>
+            <Button onClick={handleGenerate} disabled={isGenerating} className="w-full sm:w-auto">
               {isGenerating && <LoadingSpinner className="mr-2"/>}
               Запустить генерацию
             </Button>
           </div>
           {taskId && (
             <div className="p-4 bg-muted rounded-md space-y-3">
-              <p className="text-sm">
+              <p className="text-sm break-all">
                 ID Задачи: <code className="font-mono bg-background p-1 rounded">{taskId}</code>
               </p>
               <div className="flex flex-col sm:flex-row gap-2">
@@ -163,7 +163,7 @@ export default function LogManager() {
                 onChange={(e) => setDownloadDate(e.target.value)}
                 className="w-full sm:w-auto"
                 />
-                <Button onClick={handleDownloadArchived} disabled={isDownloading || !downloadDate}>
+                <Button onClick={handleDownloadArchived} disabled={isDownloading || !downloadDate} className="w-full sm:w-auto">
                     {isDownloading && <LoadingSpinner className="mr-2" />}
                     Скачать архив
                 </Button>

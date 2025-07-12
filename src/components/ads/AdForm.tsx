@@ -264,9 +264,10 @@ export default function AdForm({ adId }: AdFormProps) {
 
   return (
     <Card className="w-full max-w-2xl mx-auto shadow-xl">
-      <CardHeader>
-        <Button onClick={() => router.back()} variant="outline" size="sm" className="absolute left-4 top-4 md:left-6 md:top-6">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Назад
+      <CardHeader className="relative">
+         <Button onClick={() => router.back()} variant="ghost" size="icon" className="absolute left-2 top-2 sm:left-4 sm:top-4">
+          <ArrowLeft className="h-5 w-5" />
+          <span className="sr-only">Назад</span>
         </Button>
         <CardTitle className="text-2xl font-headline text-center pt-8 md:pt-0">{adId ? 'Редактировать объявление' : 'Создать новое объявление'}</CardTitle>
         <CardDescription className="text-center">{adId ? 'Обновите детали вашего объявления.' : 'Заполните форму для размещения вашего объявления.'}</CardDescription>
@@ -332,7 +333,7 @@ export default function AdForm({ adId }: AdFormProps) {
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="regionId"
@@ -462,7 +463,7 @@ export default function AdForm({ adId }: AdFormProps) {
                   existingImageUrls={existingImages}
                   onRemoveExistingImage={handleRemoveExistingImage}
                   aspectRatio="aspect-square"
-                  className="w-full sm:max-w-md" 
+                  className="w-full" 
                 />
             </FormItem>
 

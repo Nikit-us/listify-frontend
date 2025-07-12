@@ -134,7 +134,7 @@ export default function ProfilePageClient() {
         </CardHeader>
         <CardContent className="p-0">
           <Tabs defaultValue={initialTab} className="w-full" onValueChange={(value) => router.push(`/profile/me?tab=${value}`, { scroll: false })}>
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 rounded-none border-b">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 rounded-none border-b">
               <TabsTrigger value="info" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none">
                 <PackageSearch className="mr-2 h-4 w-4 hidden sm:inline-block"/> Информация
               </TabsTrigger>

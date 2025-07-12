@@ -238,66 +238,68 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="regionId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Область</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isLocationDataLoading}>
-                    <FormControl>
-                      <SelectTrigger><SelectValue placeholder="Выберите область" /></SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {regions.map(region => (
-                        <SelectItem key={region.id} value={region.id.toString()}>{region.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="districtId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Район</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isLocationDataLoading || !watchedRegionId || districts.length === 0}>
-                    <FormControl>
-                      <SelectTrigger><SelectValue placeholder="Выберите район" /></SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {districts.map(district => (
-                        <SelectItem key={district.id} value={district.id.toString()}>{district.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="cityId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Город</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isLocationDataLoading || !watchedDistrictId || cities.length === 0}>
-                    <FormControl>
-                      <SelectTrigger><SelectValue placeholder="Выберите город" /></SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {cities.map(city => (
-                        <SelectItem key={city.id} value={city.id.toString()}>{city.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="regionId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Область</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isLocationDataLoading}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Выберите область" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {regions.map(region => (
+                          <SelectItem key={region.id} value={region.id.toString()}>{region.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="districtId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Район</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isLocationDataLoading || !watchedRegionId || districts.length === 0}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Выберите район" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {districts.map(district => (
+                          <SelectItem key={district.id} value={district.id.toString()}>{district.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="cityId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Город</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isLocationDataLoading || !watchedDistrictId || cities.length === 0}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Выберите город" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {cities.map(city => (
+                          <SelectItem key={city.id} value={city.id.toString()}>{city.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {formError && <p className="text-sm font-medium text-destructive">{formError}</p>}
             <Button type="submit" className="w-full" disabled={isLoading || isLocationDataLoading}>
