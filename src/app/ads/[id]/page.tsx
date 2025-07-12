@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, Link } from 'next/navigation';
 import ImageGallery from '@/components/ads/ImageGallery';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import type { AdvertisementDetailDto } from '@/types/api';
@@ -207,7 +207,10 @@ export default function AdDetailPage() {
             <div className="flex items-start">
               <UserCircle className="h-5 w-5 mr-3 mt-0.5 text-muted-foreground shrink-0" />
               <div>
-                <span className="font-medium">Продавец:</span> {ad.sellerName} {/* TODO: Link to seller profile page if exists */}
+                <span className="font-medium">Продавец:</span>{' '}
+                 <Link href={`/profile/${ad.sellerId}`} className="text-primary hover:underline">
+                    {ad.sellerName}
+                 </Link>
               </div>
             </div>
              <div className="flex items-start md:col-span-2">
