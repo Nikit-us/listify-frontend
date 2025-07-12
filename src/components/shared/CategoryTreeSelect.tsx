@@ -9,7 +9,8 @@ import {
   DialogContent,
   DialogTrigger,
   DialogOverlay,
-  DialogClose
+  DialogClose,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronDown, Check } from 'lucide-react';
@@ -148,7 +149,8 @@ export default function CategoryTreeSelect({
         className="p-0 rounded-md border shadow-md w-auto"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <ScrollArea className="max-h-[60vh]">
+        <DialogTitle className="sr-only">Выбор категории</DialogTitle>
+        <ScrollArea className="max-h-[70vh]">
           <div className="p-1">
             <DialogClose asChild>
                 <div
