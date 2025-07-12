@@ -138,19 +138,18 @@ export default function CategoryTreeSelect({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </DialogTrigger>
-       <DialogOverlay className="bg-transparent" />
+       <DialogOverlay />
       <DialogContent
         style={{
             top: `${dialogPosition.top}px`,
             left: `${dialogPosition.left}px`,
             width: `${dialogPosition.width}px`,
-            transform: 'none', // Override default centering
         }}
         className="p-0 rounded-md border shadow-md w-auto"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogTitle className="sr-only">Выбор категории</DialogTitle>
-        <ScrollArea className="max-h-[70vh]">
+        <ScrollArea className="max-h-72">
           <div className="p-1">
             <DialogClose asChild>
                 <div
