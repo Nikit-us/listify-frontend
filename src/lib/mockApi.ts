@@ -63,6 +63,8 @@ const handleApiError = async (response: Response, url: string): Promise<Error> =
     const errorData: ApiError = await response.json();
     if (typeof errorData.message === 'string') {
       errorMessage = errorData.message;
+    } else if (Array.isArray(errorData.message)) { // Handle array of error messages
+      errorMessage = errorData.message.join('; ');
     } else if (typeof errorData.message === 'object' && errorData.message !== null) {
       errorMessage = Object.values(errorData.message).join(', ');
     } else if (errorData.error) {
@@ -71,7 +73,7 @@ const handleApiError = async (response: Response, url: string): Promise<Error> =
   } catch (e) {
      errorMessage = `Ошибка сервера (статус ${response.status}) или неверный формат ответа от ${url}.`;
   }
-  console.error(`[mockApi] ${errorMessage}`);
+  console.error(`[mockApi] API Error: ${errorMessage}`);
   return new Error(errorMessage);
 };
 
@@ -79,9 +81,8 @@ const handleFetchError = (error: unknown, url: string, context: string): Error =
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
         const helpfulError = new Error(
             `Сетевая ошибка "Failed to fetch" при запросе "${context}" на URL: ${url}. ` +
-            'Это почти всегда означает, что предварительный запрос (CORS Preflight OPTIONS) не прошел. ' +
-            'Браузер не получил от сервера разрешение на отправку основного запроса. ' +
-            'Проверьте конфигурацию CORS на вашем сервере, особенно для метода OPTIONS.'
+            'Это может быть связано с проблемой CORS, отключением сети или недоступностью сервера. ' +
+            'Проверьте сетевое подключение и конфигурацию CORS на сервере.'
         );
         console.error(`[mockApi] ${helpfulError.message}`);
         return helpfulError;
@@ -97,7 +98,7 @@ export const getRegions = async (): Promise<RegionDto[]> => {
   const url = `${API_BASE_URL}/api/locations/regions`;
   console.log(`[mockApi] Fetching regions from: ${url}`);
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
@@ -109,7 +110,7 @@ export const getDistrictsByRegion = async (regionId: number): Promise<DistrictDt
   const url = `${API_BASE_URL}/api/locations/districts?regionId=${regionId}`;
   console.log(`[mockApi] Fetching districts for region ${regionId} from: ${url}`);
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
@@ -121,7 +122,7 @@ export const getCitiesByDistrict = async (districtId: number): Promise<CityDto[]
   const url = `${API_BASE_URL}/api/locations/cities?districtId=${districtId}`;
   console.log(`[mockApi] Fetching cities for district ${districtId} from: ${url}`);
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
@@ -136,7 +137,7 @@ export const getCategoriesAsTree = async (): Promise<CategoryTreeDto[]> => {
   const url = `${API_BASE_URL}/api/categories/tree`;
   console.log(`[mockApi] Fetching category tree from: ${url}`);
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
@@ -148,7 +149,7 @@ export const getCategories = async (): Promise<CategoryDto[]> => {
   const url = `${API_BASE_URL}/api/categories`;
   console.log(`[mockApi] Fetching flat categories from: ${url}`);
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { next: { revalidate: 3600 } });
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {
@@ -175,7 +176,7 @@ export const searchAds = async (
   console.log(`[mockApi] Searching ads with URL: ${url} and token: ${token ? 'Present' : 'Absent'}`);
 
   try {
-    const response = await fetch(url, { headers });
+    const response = await fetch(url, { headers, cache: 'no-store' }); // Don't cache search results
     if (!response.ok) throw await handleApiError(response, url);
     const data: PageResponseDto<AdvertisementResponseDto> = await response.json();
     data.content = data.content.map(ad => ({ ...ad, previewImageUrl: toAbsoluteImageUrl(ad.previewImageUrl) }));
@@ -189,7 +190,7 @@ export const getAdById = async (id: number): Promise<AdvertisementDetailDto | nu
   const url = `${API_BASE_URL}/api/ads/${id}`;
   console.log(`[mockApi] Fetching ad by ID ${id} from: ${url}`);
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { cache: 'no-store' });
     if (!response.ok) {
       if (response.status === 404) return null;
       throw await handleApiError(response, url);
@@ -303,7 +304,7 @@ export const getCurrentUserProfile = async (token: string): Promise<UserProfileD
   const url = `${API_BASE_URL}/api/users/me`;
   console.log(`[mockApi] Fetching current user profile from: ${url} with token: ${token ? 'Present' : 'Absent'}`);
   try {
-    const response = await fetch(url, { headers });
+    const response = await fetch(url, { headers, cache: 'no-store' });
     if (!response.ok) {
         if (response.status === 401 || response.status === 404) return null;
         throw await handleApiError(response, url);
@@ -342,7 +343,7 @@ export const getUserProfile = async (userId: number, token?: string | null): Pro
   const url = `${API_BASE_URL}/api/users/${userId}`;
   console.log(`[mockApi] Fetching user profile for ${userId} from: ${url}`);
   try {
-    const response = await fetch(url, { headers });
+    const response = await fetch(url, { headers, cache: 'no-store' });
     if (!response.ok) {
         if (response.status === 404) return null;
         throw await handleApiError(response, url);
@@ -361,7 +362,7 @@ export const getHitStatistics = async (token: string): Promise<HitStatisticsDto>
     const url = `${API_BASE_URL}/api/admin/hits`;
     console.log(`[mockApi] Fetching hit statistics from: ${url}`);
     try {
-        const response = await fetch(url, { headers });
+        const response = await fetch(url, { headers, cache: 'no-store' });
         if (!response.ok) throw await handleApiError(response, url);
         return response.json();
     } catch (error) {
@@ -390,7 +391,7 @@ export const getLogTaskStatus = async (token: string, taskId: string): Promise<L
     const url = `${API_BASE_URL}/api/admin/logs/tasks/${taskId}/status`;
     console.log(`[mockApi] Fetching log task status from: ${url}`);
     try {
-        const response = await fetch(url, { headers });
+        const response = await fetch(url, { headers, cache: 'no-store' });
         if (!response.ok) throw await handleApiError(response, url);
         return response.json();
     } catch (error) {
@@ -452,7 +453,7 @@ export const getAllCitiesFlat = async (): Promise<CityDto[]> => {
   const url = `${API_BASE_URL}/api/locations/cities`; 
   console.log(`[mockApi] Fetching all cities (flat) from: ${url}`);
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { next: { revalidate: 3600 } });
     if (!response.ok) throw await handleApiError(response, url);
     return response.json();
   } catch (error) {

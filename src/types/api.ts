@@ -3,7 +3,7 @@ export interface ApiError {
   timestamp: string;
   status: number;
   error: string;
-  message: Record<string, unknown> | string;
+  message: Record<string, unknown> | string | string[]; // Can be a string or an array of strings
   path: string;
 }
 
@@ -164,6 +164,7 @@ export interface AdvertisementSearchCriteriaDto {
   maxPrice?: number;
   condition?: "NEW" | "USED_PERFECT" | "USED_GOOD" | "USED_FAIR";
   sellerId?: number;
+  status?: "ACTIVE" | "INACTIVE" | "SOLD";
   page?: number;
   size?: number;
   sort?: string;
