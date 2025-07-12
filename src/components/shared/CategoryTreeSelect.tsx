@@ -4,7 +4,11 @@
 import React, { useState, useEffect } from 'react';
 import type { CategoryTreeDto } from '@/types/api';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronDown, Check } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,7 +22,6 @@ interface CategoryTreeSelectProps {
   className?: string;
 }
 
-// Helper to find a category and its name in the tree
 const findCategoryInTree = (
   categories: CategoryTreeDto[],
   categoryId?: number
@@ -38,7 +41,6 @@ const findCategoryInTree = (
   return null;
 };
 
-// Component for rendering child categories (without accordion)
 const ChildCategoryList: React.FC<{
   categories: CategoryTreeDto[];
   onSelect: (category: CategoryTreeDto) => void;
@@ -55,7 +57,7 @@ const ChildCategoryList: React.FC<{
           <div
             key={category.id}
             onClick={(e) => {
-              e.stopPropagation(); // Prevent accordion from toggling
+              e.stopPropagation();
               onSelect(category);
             }}
             className={cn(
@@ -100,8 +102,8 @@ export default function CategoryTreeSelect({
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild className={className}>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild className={className}>
         <Button
           variant="outline"
           role="combobox"
@@ -111,8 +113,8 @@ export default function CategoryTreeSelect({
           <span className="truncate">{selectedCategoryName || placeholder}</span>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] p-0" align="start">
         <ScrollArea className="max-h-72">
           <div className="p-1">
             <div
@@ -165,7 +167,7 @@ export default function CategoryTreeSelect({
             </Accordion>
           </div>
         </ScrollArea>
-      </PopoverContent>
-    </Popover>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
